@@ -100,8 +100,12 @@ try
         {
             var leftMagnitudes = spectrumProcessor.ComputeMagnitudes(leftSamples);
             var rightMagnitudes = spectrumProcessor.ComputeMagnitudes(rightSamples);
-            var leftHeights = barMapperLeft.MapToBars(leftMagnitudes, barCount / 2);
-            var rightHeights = barMapperRight.MapToBars(rightMagnitudes, barCount / 2);
+            // Split so the two halves sum back to barCount even when it's odd,
+            // otherwise the frame renders one bar-slot narrower than the terminal.
+            int rightBarCount = barCount / 2;
+            int leftBarCount = barCount - rightBarCount;
+            var leftHeights = barMapperLeft.MapToBars(leftMagnitudes, leftBarCount);
+            var rightHeights = barMapperRight.MapToBars(rightMagnitudes, rightBarCount);
             heights = leftHeights.Concat(rightHeights.Reverse()).ToArray();
         }
 
