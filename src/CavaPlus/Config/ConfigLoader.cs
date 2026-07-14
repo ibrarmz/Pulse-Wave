@@ -5,6 +5,10 @@ namespace CavaPlus.Config;
 
 public static class ConfigLoader
 {
+    // CamelCase only lowercases the first letter, so this maps e.g. Framerate -> framerate.
+    // That happens to match every current config key because they're all single words;
+    // a future multi-word property (e.g. MaxFrameRate -> maxFrameRate) would NOT match this
+    // schema's flat lowercase TOML keys and would silently round-trip to its default value.
     private static readonly TomlSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -30,6 +34,8 @@ public static class ConfigLoader
             throw new ConfigException($"No se pudo leer el archivo de configuración '{path}': {ex.Message}", ex);
         }
 
+        // Deserialize<T> is nullable-annotated; satisfies that, not a real observed failure mode
+        // (malformed TOML syntax throws and is caught above, it doesn't deserialize to null).
         config ??= new CavaConfig();
 
         Validate(config, path);
