@@ -24,6 +24,10 @@ public sealed class CavaConfig
     {
         public string Mode { get; set; } = "gradient";
         public string Solid { get; set; } = "#00FF00";
-        public List<string> Gradient { get; set; } = new() { "#00FF00", "#FFFF00", "#FF0000" };
+        // Bottom -> top rainbow (red at the base rising through the spectrum to violet at the peak).
+        public List<string> Gradient { get; set; } = new()
+        {
+            "#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#9400D3",
+        };
     }
 }
