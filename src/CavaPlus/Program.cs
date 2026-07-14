@@ -126,7 +126,11 @@ try
             int leftBarCount = barCount - rightBarCount;
             var leftHeights = barMapperLeft.MapToBars(leftMagnitudes, leftBarCount);
             var rightHeights = barMapperRight.MapToBars(rightMagnitudes, rightBarCount);
-            heights = leftHeights.Concat(rightHeights.Reverse()).ToArray();
+            // Each MapToBars result runs low frequency (bass) -> high frequency (treble).
+            // Mirror it so bass sits at the center and treble at the outer edges (the
+            // conventional stereo spectrum layout) instead of bass at both edges, which left
+            // the middle looking flat since treble energy is usually much lower than bass.
+            heights = leftHeights.Reverse().Concat(rightHeights).ToArray();
         }
 
         var frame = frameBuilder.BuildFrame(heights, rows);
