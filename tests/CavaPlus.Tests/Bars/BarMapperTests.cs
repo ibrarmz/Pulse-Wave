@@ -48,4 +48,24 @@ public class BarMapperTests
         float highHalfMax = heights.Skip(4).Max();
         Assert.True(lowHalfMax > highHalfMax);
     }
+
+    [Fact]
+    public void MapToBars_ScalesRelativeToRecentPeak_NotAbsoluteMagnitude()
+    {
+        // Regression test: a fixed linear divisor clamped every real-world magnitude to 1.0
+        // regardless of relative loudness (observed as a frozen, fully-lit display against real
+        // audio). Scaling relative to a tracked recent peak should instead produce a height
+        // proportional to how loud "quieter" is compared to "loud", not pinned to the clamp.
+        var mapper = new BarMapper(sampleRate: 44100, fftLength: 1024, sensitivity: 100f, smoothingFactor: 0f);
+        var loud = new float[512];
+        Array.Fill(loud, 1000f);
+        var halfAsLoud = new float[512];
+        Array.Fill(halfAsLoud, 500f);
+
+        mapper.MapToBars(loud, barCount: 4); // establishes a recent peak around 1000
+
+        var heights = mapper.MapToBars(halfAsLoud, barCount: 4);
+
+        Assert.All(heights, h => Assert.InRange(h, 0.4f, 0.6f));
+    }
 }

@@ -1,17 +1,23 @@
+using System.Linq;
+
 namespace CavaPlus.Bars;
 
 public sealed class BarMapper
 {
-    // Heuristic scale between raw FFT magnitude and a 0..1 bar height: NAudio's magnitudes
-    // aren't calibrated to a fixed loudness reference, so this needs re-tuning by ear once
-    // real WASAPI audio is wired in (later task).
-    private const float MagnitudeNormalization = 50f;
+    // Real WASAPI FFT magnitudes have no fixed loudness reference - their absolute scale depends
+    // on system/app volume, which varies per machine and per moment. A fixed divisor either clips
+    // everything to the max (too sensitive) or shows nothing (not sensitive enough) depending on
+    // that volume. Instead, track a slowly-decaying recent peak and scale each bar relative to it,
+    // so bar height reflects relative loudness regardless of the absolute magnitude scale.
+    private const float PeakDecayPerFrame = 0.995f; // ~a few seconds to fully decay at 60fps
+    private const float MinPeakMagnitude = 1e-3f;   // floor so scaling never divides by ~0 during silence
 
     private readonly int _sampleRate;
     private readonly int _fftLength;
     private readonly float _sensitivity;
     private readonly float _smoothingFactor;
     private float[]? _previousHeights;
+    private float _peakMagnitude = MinPeakMagnitude;
 
     public BarMapper(int sampleRate, int fftLength, float sensitivity, float smoothingFactor = 0.6f)
     {
@@ -24,7 +30,7 @@ public sealed class BarMapper
     public float[] MapToBars(float[] magnitudes, int barCount)
     {
         var edges = ComputeLogFrequencyEdges(barCount, magnitudes.Length);
-        var rawHeights = new float[barCount];
+        var barAverages = new float[barCount];
 
         for (int bar = 0; bar < barCount; bar++)
         {
@@ -38,8 +44,16 @@ public sealed class BarMapper
                 count++;
             }
 
-            float average = count > 0 ? sum / count : 0f;
-            float scaled = average * _sensitivity / 100f / MagnitudeNormalization;
+            barAverages[bar] = count > 0 ? sum / count : 0f;
+        }
+
+        float frameMax = barAverages.Length > 0 ? barAverages.Max() : 0f;
+        _peakMagnitude = Math.Max(MinPeakMagnitude, Math.Max(frameMax, _peakMagnitude * PeakDecayPerFrame));
+
+        var rawHeights = new float[barCount];
+        for (int bar = 0; bar < barCount; bar++)
+        {
+            float scaled = barAverages[bar] / _peakMagnitude * (_sensitivity / 100f);
             rawHeights[bar] = Math.Clamp(scaled, 0f, 1f);
         }
 
