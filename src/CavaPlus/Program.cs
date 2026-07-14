@@ -46,6 +46,13 @@ catch (NotSupportedException ex)
     AnsiConsole.MarkupLine($"[red]Error de audio:[/] {ex.Message.EscapeMarkup()}");
     return 1;
 }
+catch (Exception ex)
+{
+    // WasapiLoopbackCapture's own constructor (not AudioCapture's format checks) throws here
+    // when there's no active default output device - a real, spec-called-out failure mode.
+    AnsiConsole.MarkupLine($"[red]Error de audio:[/] No se pudo iniciar la captura de audio: {ex.Message.EscapeMarkup()}");
+    return 1;
+}
 
 int sampleRate = capture.WaveFormat.SampleRate;
 var spectrumProcessor = new SpectrumProcessor(fftLength);
@@ -53,9 +60,22 @@ var barMapperLeft = new BarMapper(sampleRate, fftLength, config.General.Sensitiv
 var barMapperRight = new BarMapper(sampleRate, fftLength, config.General.Sensitivity);
 
 var barStyle = config.Bars.Style == "gradient" ? BarStyle.Gradient : BarStyle.Classic;
-var colorStops = config.Color.Mode == "solid"
-    ? new List<Color> { ParseHexColor(config.Color.Solid) }
-    : config.Color.Gradient.Select(ParseHexColor).ToList();
+
+List<Color> colorStops;
+try
+{
+    colorStops = config.Color.Mode == "solid"
+        ? new List<Color> { ParseHexColor(config.Color.Solid) }
+        : config.Color.Gradient.Select(ParseHexColor).ToList();
+}
+catch (Exception ex) when (ex is FormatException or ArgumentOutOfRangeException or ArgumentException)
+{
+    AnsiConsole.MarkupLine(
+        $"[red]Error de configuración:[/] color inválido en '{configPath}': {ex.Message.EscapeMarkup()}. " +
+        "Los colores deben ser hexadecimales de 6 dígitos, por ejemplo '#00FF00'.");
+    capture.Dispose();
+    return 1;
+}
 
 var frameBuilder = new BarFrameBuilder(barStyle, config.Bars.Width, config.Bars.Gap, colorStops, config.Color.Mode == "solid");
 var renderer = new ConsoleRenderer();
