@@ -62,9 +62,12 @@ public class BarMapperTests
         var halfAsLoud = new float[512];
         Array.Fill(halfAsLoud, 500f);
 
-        mapper.MapToBars(loud, barCount: 4); // establishes a recent peak around 1000
+        // barCount: 1 keeps this test independent of the per-bar frequency-gain weighting
+        // BarMapper applies internally - with a single bar, the same bin range is averaged
+        // both times, so the ratio between calls is exactly the ratio between the two inputs.
+        mapper.MapToBars(loud, barCount: 1); // establishes a recent peak around 1000
 
-        var heights = mapper.MapToBars(halfAsLoud, barCount: 4);
+        var heights = mapper.MapToBars(halfAsLoud, barCount: 1);
 
         Assert.All(heights, h => Assert.InRange(h, 0.4f, 0.6f));
     }

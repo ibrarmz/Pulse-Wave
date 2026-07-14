@@ -12,10 +12,18 @@ public sealed class BarMapper
     private const float PeakDecayPerFrame = 0.995f; // ~a few seconds to fully decay at 60fps
     private const float MinPeakMagnitude = 1e-3f;   // floor so scaling never divides by ~0 during silence
 
+    // Real music's energy rolls off sharply above a few kHz, so an unweighted spectrum leaves
+    // most of the upper bars looking permanently flat. FrequencyGainReferenceHz controls how much
+    // extra gain higher-frequency bins get (gain = 1 + freqHz/reference) to compensate, and capping
+    // the mapped range below the Nyquist/20kHz ceiling avoids spending bars on near-silent treble.
+    private const float FrequencyGainReferenceHz = 6000f;
+    private const float MaxMappedFrequencyHz = 12000f;
+
     private readonly int _sampleRate;
     private readonly int _fftLength;
     private readonly float _sensitivity;
     private readonly float _smoothingFactor;
+    private readonly float _binWidthHz;
     private float[]? _previousHeights;
     private float _peakMagnitude = MinPeakMagnitude;
 
@@ -25,6 +33,7 @@ public sealed class BarMapper
         _fftLength = fftLength;
         _sensitivity = sensitivity;
         _smoothingFactor = smoothingFactor;
+        _binWidthHz = (float)sampleRate / fftLength;
     }
 
     public float[] MapToBars(float[] magnitudes, int barCount)
@@ -40,7 +49,9 @@ public sealed class BarMapper
             int count = 0;
             for (int bin = startBin; bin < endBin && bin < magnitudes.Length; bin++)
             {
-                sum += magnitudes[bin];
+                float frequencyHz = bin * _binWidthHz;
+                float gain = 1f + frequencyHz / FrequencyGainReferenceHz;
+                sum += magnitudes[bin] * gain;
                 count++;
             }
 
@@ -75,7 +86,7 @@ public sealed class BarMapper
     private int[] ComputeLogFrequencyEdges(int barCount, int totalBins)
     {
         const float minFrequencyHz = 20f;
-        float maxFrequencyHz = Math.Min(_sampleRate / 2f, 20000f);
+        float maxFrequencyHz = Math.Min(_sampleRate / 2f, MaxMappedFrequencyHz);
         float binWidthHz = (float)_sampleRate / _fftLength;
 
         var edges = new int[barCount + 1];

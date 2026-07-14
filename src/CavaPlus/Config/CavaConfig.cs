@@ -16,8 +16,8 @@ public sealed class CavaConfig
     public sealed class BarsSection
     {
         public string Style { get; set; } = "classic";
-        public int Width { get; set; } = 2;
-        public int Gap { get; set; } = 1;
+        public int Width { get; set; } = 4;
+        public int Gap { get; set; } = 2;
     }
 
     public sealed class ColorSection
