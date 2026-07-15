@@ -76,4 +76,19 @@ public class BassBeatDetectorTests
 
         Assert.Equal(0f, flash);
     }
+
+    [Fact]
+    public void Update_WithSecondSpikeDuringCooldown_DoesNotReTrigger()
+    {
+        var detector = new BassBeatDetector(sampleRate: 44100, fftLength: 1024);
+        detector.Update(MakeMagnitudes(10f)); // initializes baseline
+        detector.Update(MakeMagnitudes(10f)); // confirms flat baseline
+        detector.Update(MakeMagnitudes(50f)); // triggers, flash = 1.0, cooldown starts
+
+        // A second loud spike arriving while still in cooldown must NOT re-trigger a fresh
+        // 1.0 - it should just decay from the prior flash like any other non-triggering frame.
+        float flash = detector.Update(MakeMagnitudes(80f));
+
+        Assert.Equal(0.5f, flash, precision: 3);
+    }
 }
