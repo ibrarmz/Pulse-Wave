@@ -151,8 +151,14 @@ try
             // the middle looking flat since treble energy is usually much lower than bass.
             heights = leftHeights.Reverse().Concat(rightHeights).ToArray();
             // Sum both channels' magnitudes so bass-beat detection reacts to either channel's
-            // kick/bass energy, without running a third FFT.
-            bassMagnitudes = leftMagnitudes.Zip(rightMagnitudes, (l, r) => l + r).ToArray();
+            // kick/bass energy, without running a third FFT. leftMagnitudes is already fully
+            // consumed by MapToBars above and isn't read again, so summing in place avoids an
+            // extra per-frame allocation on this 60fps hot path.
+            for (int i = 0; i < leftMagnitudes.Length; i++)
+            {
+                leftMagnitudes[i] += rightMagnitudes[i];
+            }
+            bassMagnitudes = leftMagnitudes;
         }
 
         float brightnessFactor = loudnessTracker.Update(leftSamples, rightSamples);
