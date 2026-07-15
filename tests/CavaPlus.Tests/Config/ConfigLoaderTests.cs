@@ -82,4 +82,59 @@ public class ConfigLoaderTests
         var ex = Assert.Throws<ConfigException>(() => ConfigLoader.Validate(config, "config.toml"));
         Assert.Contains("gradient", ex.Message);
     }
+
+    [Fact]
+    public void LoadOrCreateDefault_WhenFileMissing_IncludesNowPlayingDefaults()
+    {
+        string path = TempConfigPath();
+        try
+        {
+            var config = ConfigLoader.LoadOrCreateDefault(path);
+
+            Assert.True(config.NowPlaying.Enabled);
+            Assert.Equal("— sin reproducción —", config.NowPlaying.Placeholder);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadOrCreateDefault_WithExistingValidFile_ParsesNowPlayingSection()
+    {
+        string path = TempConfigPath();
+        try
+        {
+            File.WriteAllText(path, """
+                [general]
+                framerate = 30
+                sensitivity = 150.0
+                channels = "mono"
+
+                [bars]
+                style = "gradient"
+                width = 3
+                gap = 0
+
+                [color]
+                mode = "solid"
+                solid = "#112233"
+                gradient = ["#000000", "#FFFFFF"]
+
+                [nowPlaying]
+                enabled = false
+                placeholder = "nada sonando"
+                """);
+
+            var config = ConfigLoader.LoadOrCreateDefault(path);
+
+            Assert.False(config.NowPlaying.Enabled);
+            Assert.Equal("nada sonando", config.NowPlaying.Placeholder);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

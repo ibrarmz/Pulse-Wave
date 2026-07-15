@@ -5,6 +5,7 @@ public sealed class CavaConfig
     public GeneralSection General { get; set; } = new();
     public BarsSection Bars { get; set; } = new();
     public ColorSection Color { get; set; } = new();
+    public NowPlayingSection NowPlaying { get; set; } = new();
 
     public sealed class GeneralSection
     {
@@ -29,5 +30,11 @@ public sealed class CavaConfig
         {
             "#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#9400D3",
         };
+    }
+
+    public sealed class NowPlayingSection
+    {
+        public bool Enabled { get; set; } = true;
+        public string Placeholder { get; set; } = "— sin reproducción —";
     }
 }
