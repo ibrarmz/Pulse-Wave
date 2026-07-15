@@ -59,6 +59,8 @@ int sampleRate = capture.WaveFormat.SampleRate;
 var spectrumProcessor = new SpectrumProcessor(fftLength);
 var barMapperLeft = new BarMapper(sampleRate, fftLength, config.General.Sensitivity);
 var barMapperRight = new BarMapper(sampleRate, fftLength, config.General.Sensitivity);
+var loudnessTracker = new LoudnessTracker();
+var bassBeatDetector = new BassBeatDetector(sampleRate, fftLength);
 
 var barStyle = config.Bars.Style == "gradient" ? BarStyle.Gradient : BarStyle.Classic;
 
@@ -66,8 +68,8 @@ List<Color> colorStops;
 try
 {
     colorStops = config.Color.Mode == "solid"
-        ? new List<Color> { ParseHexColor(config.Color.Solid) }
-        : config.Color.Gradient.Select(ParseHexColor).ToList();
+        ? new List<Color> { ColorPalettes.ParseHexColor(config.Color.Solid) }
+        : ColorPalettes.Resolve(config.Color.Palette, config.Color.Gradient);
 }
 catch (Exception ex) when (ex is FormatException or ArgumentOutOfRangeException or ArgumentException)
 {
@@ -121,6 +123,7 @@ try
         int rows = Math.Max(1, Console.WindowHeight);
 
         float[] heights;
+        float[] bassMagnitudes;
         if (config.General.Channels == "mono")
         {
             var mono = new float[fftLength];
@@ -130,6 +133,7 @@ try
             }
             var magnitudes = spectrumProcessor.ComputeMagnitudes(mono);
             heights = barMapperLeft.MapToBars(magnitudes, barCount);
+            bassMagnitudes = magnitudes;
         }
         else
         {
@@ -146,9 +150,20 @@ try
             // conventional stereo spectrum layout) instead of bass at both edges, which left
             // the middle looking flat since treble energy is usually much lower than bass.
             heights = leftHeights.Reverse().Concat(rightHeights).ToArray();
+            // Sum both channels' magnitudes so bass-beat detection reacts to either channel's
+            // kick/bass energy, without running a third FFT.
+            bassMagnitudes = leftMagnitudes.Zip(rightMagnitudes, (l, r) => l + r).ToArray();
         }
 
+        float brightnessFactor = loudnessTracker.Update(leftSamples, rightSamples);
+        float flashIntensity = bassBeatDetector.Update(bassMagnitudes);
+
         var frame = frameBuilder.BuildFrame(heights, rows);
+
+        if (config.Color.Reactive)
+        {
+            ColorReactivity.Apply(frame, brightnessFactor, flashIntensity);
+        }
 
         if (config.NowPlaying.Enabled)
         {
@@ -177,12 +192,3 @@ finally
 }
 
 return 0;
-
-static Color ParseHexColor(string hex)
-{
-    hex = hex.TrimStart('#');
-    byte r = Convert.ToByte(hex.Substring(0, 2), 16);
-    byte g = Convert.ToByte(hex.Substring(2, 2), 16);
-    byte b = Convert.ToByte(hex.Substring(4, 2), 16);
-    return new Color(r, g, b);
-}
