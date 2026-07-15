@@ -14,6 +14,8 @@ public static class ConfigLoader
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private static readonly string[] ValidPalettes = { "rainbow", "neon", "fire", "ice", "mono", "custom" };
+
     public static CavaConfig LoadOrCreateDefault(string path)
     {
         if (!File.Exists(path))
@@ -68,8 +70,10 @@ public static class ConfigLoader
             errors.Add("bars.gap no puede ser negativo");
         if (config.Color.Mode != "solid" && config.Color.Mode != "gradient")
             errors.Add("color.mode debe ser 'solid' o 'gradient'");
-        if (config.Color.Mode == "gradient" && config.Color.Gradient.Count < 2)
-            errors.Add("color.gradient debe tener al menos 2 colores cuando color.mode es 'gradient'");
+        if (!ValidPalettes.Contains(config.Color.Palette))
+            errors.Add("color.palette debe ser 'rainbow', 'neon', 'fire', 'ice', 'mono' o 'custom'");
+        if (config.Color.Mode == "gradient" && config.Color.Palette == "custom" && config.Color.Gradient.Count < 2)
+            errors.Add("color.gradient debe tener al menos 2 colores cuando color.mode es 'gradient' y color.palette es 'custom'");
 
         if (errors.Count > 0)
         {

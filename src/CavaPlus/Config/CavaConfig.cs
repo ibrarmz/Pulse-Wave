@@ -30,6 +30,8 @@ public sealed class CavaConfig
         {
             "#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#9400D3",
         };
+        public string Palette { get; set; } = "rainbow";
+        public bool Reactive { get; set; } = true;
     }
 
     public sealed class NowPlayingSection

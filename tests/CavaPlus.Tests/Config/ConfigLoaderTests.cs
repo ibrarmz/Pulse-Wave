@@ -77,6 +77,7 @@ public class ConfigLoaderTests
     {
         var config = new CavaConfig();
         config.Color.Mode = "gradient";
+        config.Color.Palette = "custom";
         config.Color.Gradient = new List<string> { "#FFFFFF" };
 
         var ex = Assert.Throws<ConfigException>(() => ConfigLoader.Validate(config, "config.toml"));
@@ -136,5 +137,81 @@ public class ConfigLoaderTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void LoadOrCreateDefault_WhenFileMissing_IncludesColorReactivityDefaults()
+    {
+        string path = TempConfigPath();
+        try
+        {
+            var config = ConfigLoader.LoadOrCreateDefault(path);
+
+            Assert.Equal("rainbow", config.Color.Palette);
+            Assert.True(config.Color.Reactive);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadOrCreateDefault_WithExistingValidFile_ParsesPaletteAndReactive()
+    {
+        string path = TempConfigPath();
+        try
+        {
+            File.WriteAllText(path, """
+                [general]
+                framerate = 30
+                sensitivity = 150.0
+                channels = "mono"
+
+                [bars]
+                style = "gradient"
+                width = 3
+                gap = 0
+
+                [color]
+                mode = "gradient"
+                solid = "#112233"
+                gradient = ["#000000", "#FFFFFF"]
+                palette = "fire"
+                reactive = false
+                """);
+
+            var config = ConfigLoader.LoadOrCreateDefault(path);
+
+            Assert.Equal("fire", config.Color.Palette);
+            Assert.False(config.Color.Reactive);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Validate_WithInvalidPalette_ThrowsConfigException()
+    {
+        var config = new CavaConfig();
+        config.Color.Palette = "bogus";
+
+        var ex = Assert.Throws<ConfigException>(() => ConfigLoader.Validate(config, "config.toml"));
+        Assert.Contains("palette", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WithNamedPaletteAndTooFewGradientColors_DoesNotThrow()
+    {
+        var config = new CavaConfig();
+        config.Color.Mode = "gradient";
+        config.Color.Palette = "fire";
+        config.Color.Gradient = new List<string> { "#FFFFFF" };
+
+        var exception = Record.Exception(() => ConfigLoader.Validate(config, "config.toml"));
+
+        Assert.Null(exception);
     }
 }
