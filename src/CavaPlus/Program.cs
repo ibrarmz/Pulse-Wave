@@ -60,7 +60,6 @@ var spectrumProcessor = new SpectrumProcessor(fftLength);
 var barMapperLeft = new BarMapper(sampleRate, fftLength, config.General.Sensitivity);
 var barMapperRight = new BarMapper(sampleRate, fftLength, config.General.Sensitivity);
 var loudnessTracker = new LoudnessTracker();
-var bassBeatDetector = new BassBeatDetector(sampleRate, fftLength);
 
 var barStyle = config.Bars.Style == "gradient" ? BarStyle.Gradient : BarStyle.Classic;
 
@@ -123,7 +122,6 @@ try
         int rows = Math.Max(1, Console.WindowHeight);
 
         float[] heights;
-        float[] bassMagnitudes;
         if (config.General.Channels == "mono")
         {
             var mono = new float[fftLength];
@@ -133,7 +131,6 @@ try
             }
             var magnitudes = spectrumProcessor.ComputeMagnitudes(mono);
             heights = barMapperLeft.MapToBars(magnitudes, barCount);
-            bassMagnitudes = magnitudes;
         }
         else
         {
@@ -150,25 +147,15 @@ try
             // conventional stereo spectrum layout) instead of bass at both edges, which left
             // the middle looking flat since treble energy is usually much lower than bass.
             heights = leftHeights.Reverse().Concat(rightHeights).ToArray();
-            // Sum both channels' magnitudes so bass-beat detection reacts to either channel's
-            // kick/bass energy, without running a third FFT. leftMagnitudes is already fully
-            // consumed by MapToBars above and isn't read again, so summing in place avoids an
-            // extra per-frame allocation on this 60fps hot path.
-            for (int i = 0; i < leftMagnitudes.Length; i++)
-            {
-                leftMagnitudes[i] += rightMagnitudes[i];
-            }
-            bassMagnitudes = leftMagnitudes;
         }
 
         float brightnessFactor = loudnessTracker.Update(leftSamples, rightSamples);
-        float flashIntensity = bassBeatDetector.Update(bassMagnitudes);
 
         var frame = frameBuilder.BuildFrame(heights, rows);
 
         if (config.Color.Reactive)
         {
-            ColorReactivity.Apply(frame, brightnessFactor, flashIntensity);
+            ColorReactivity.Apply(frame, brightnessFactor);
         }
 
         if (config.NowPlaying.Enabled)
