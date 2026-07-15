@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add selectable color palettes (rainbow/neon/fire/ice/mono/custom) and audio-reactive color (brightness that breathes with overall volume, plus a brief flash on bass hits) to CavaPlus's bar display.
+**Goal:** Add selectable color palettes (rainbow/neon/fire/ice/mono/custom) and audio-reactive color (brightness that breathes with overall volume, plus a brief flash on bass hits) to Pulsewave's bar display.
 
 **Architecture:** Four new small, independently testable units slot into the existing render pipeline without touching `BarFrameBuilder`: `ColorPalettes` (pure lookup, named palette -> color list, plus the hex-parsing helper factored out of `Program.cs`), `LoudnessTracker` (stateful, samples -> smoothed brightness factor, same adaptive-peak trick `BarMapper` already uses), `BassBeatDetector` (stateful, bass-band magnitudes -> decaying flash intensity), and `ColorReactivity` (pure, mutates an already-built `BarCell[,]` frame — same style as `OverlayText`). `Program.cs`'s per-frame loop becomes `BuildFrame -> ColorReactivity.Apply -> OverlayText.Apply -> Render`, in that order so the now-playing title never dims or flashes.
 
@@ -16,7 +16,7 @@
 ## File structure
 
 ```
-src/CavaPlus/
+src/Pulsewave/
   Program.cs                          # wire LoudnessTracker + BassBeatDetector + ColorReactivity in; palette-resolved color stops
   Rendering/
     ColorPalettes.cs                  # new: named preset -> List<Color>, plus shared hex-parsing helper
@@ -28,7 +28,7 @@ src/CavaPlus/
   Config/
     CavaConfig.cs                     # + ColorSection.Palette, ColorSection.Reactive
     ConfigLoader.cs                   # + palette validation, gradient-count check scoped to palette=="custom"
-tests/CavaPlus.Tests/
+tests/Pulsewave.Tests/
   Rendering/ColorPalettesTests.cs     # new
   Rendering/ColorReactivityTests.cs   # new
   Audio/LoudnessTrackerTests.cs       # new
@@ -43,20 +43,20 @@ tests/CavaPlus.Tests/
 ### Task 1: ColorPalettes
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/ColorPalettes.cs`
-- Create: `tests/CavaPlus.Tests/Rendering/ColorPalettesTests.cs`
+- Create: `src/Pulsewave/Rendering/ColorPalettes.cs`
+- Create: `tests/Pulsewave.Tests/Rendering/ColorPalettesTests.cs`
 
 Pure lookup + hex parsing, no I/O — fully unit-testable, follows TDD.
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Rendering/ColorPalettesTests.cs`:
+`tests/Pulsewave.Tests/Rendering/ColorPalettesTests.cs`:
 
 ```csharp
-using CavaPlus.Rendering;
+using Pulsewave.Rendering;
 using Spectre.Console;
 
-namespace CavaPlus.Tests.Rendering;
+namespace Pulsewave.Tests.Rendering;
 
 public class ColorPalettesTests
 {
@@ -124,19 +124,19 @@ public class ColorPalettesTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorPalettesTests
+dotnet test Pulsewave.sln --filter ColorPalettesTests
 ```
 
-Expected: FAIL — `CavaPlus.Rendering.ColorPalettes` does not exist.
+Expected: FAIL — `Pulsewave.Rendering.ColorPalettes` does not exist.
 
 - [ ] **Step 3: Implement `ColorPalettes`**
 
-`src/CavaPlus/Rendering/ColorPalettes.cs`:
+`src/Pulsewave/Rendering/ColorPalettes.cs`:
 
 ```csharp
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public static class ColorPalettes
 {
@@ -172,7 +172,7 @@ public static class ColorPalettes
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorPalettesTests
+dotnet test Pulsewave.sln --filter ColorPalettesTests
 ```
 
 Expected: PASS (6 tests).
@@ -180,7 +180,7 @@ Expected: PASS (6 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/ColorPalettes.cs tests/CavaPlus.Tests/Rendering/ColorPalettesTests.cs
+git add src/Pulsewave/Rendering/ColorPalettes.cs tests/Pulsewave.Tests/Rendering/ColorPalettesTests.cs
 git commit -m "feat: add ColorPalettes with rainbow/neon/fire/ice/mono presets"
 ```
 
@@ -189,20 +189,20 @@ git commit -m "feat: add ColorPalettes with rainbow/neon/fire/ice/mono presets"
 ### Task 2: ColorReactivity
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/ColorReactivity.cs`
-- Create: `tests/CavaPlus.Tests/Rendering/ColorReactivityTests.cs`
+- Create: `src/Pulsewave/Rendering/ColorReactivity.cs`
+- Create: `tests/Pulsewave.Tests/Rendering/ColorReactivityTests.cs`
 
 Pure grid/color math, no I/O — fully unit-testable, follows TDD.
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Rendering/ColorReactivityTests.cs`:
+`tests/Pulsewave.Tests/Rendering/ColorReactivityTests.cs`:
 
 ```csharp
-using CavaPlus.Rendering;
+using Pulsewave.Rendering;
 using Spectre.Console;
 
-namespace CavaPlus.Tests.Rendering;
+namespace Pulsewave.Tests.Rendering;
 
 public class ColorReactivityTests
 {
@@ -258,19 +258,19 @@ public class ColorReactivityTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorReactivityTests
+dotnet test Pulsewave.sln --filter ColorReactivityTests
 ```
 
-Expected: FAIL — `CavaPlus.Rendering.ColorReactivity` does not exist.
+Expected: FAIL — `Pulsewave.Rendering.ColorReactivity` does not exist.
 
 - [ ] **Step 3: Implement `ColorReactivity`**
 
-`src/CavaPlus/Rendering/ColorReactivity.cs`:
+`src/Pulsewave/Rendering/ColorReactivity.cs`:
 
 ```csharp
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public static class ColorReactivity
 {
@@ -308,7 +308,7 @@ public static class ColorReactivity
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorReactivityTests
+dotnet test Pulsewave.sln --filter ColorReactivityTests
 ```
 
 Expected: PASS (4 tests).
@@ -316,7 +316,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/ColorReactivity.cs tests/CavaPlus.Tests/Rendering/ColorReactivityTests.cs
+git add src/Pulsewave/Rendering/ColorReactivity.cs tests/Pulsewave.Tests/Rendering/ColorReactivityTests.cs
 git commit -m "feat: add ColorReactivity for brightness/flash post-processing on a frame"
 ```
 
@@ -325,19 +325,19 @@ git commit -m "feat: add ColorReactivity for brightness/flash post-processing on
 ### Task 3: LoudnessTracker
 
 **Files:**
-- Create: `src/CavaPlus/Audio/LoudnessTracker.cs`
-- Create: `tests/CavaPlus.Tests/Audio/LoudnessTrackerTests.cs`
+- Create: `src/Pulsewave/Audio/LoudnessTracker.cs`
+- Create: `tests/Pulsewave.Tests/Audio/LoudnessTrackerTests.cs`
 
 Stateful but deterministic given synthetic sample arrays — no real audio needed, follows TDD.
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Audio/LoudnessTrackerTests.cs`:
+`tests/Pulsewave.Tests/Audio/LoudnessTrackerTests.cs`:
 
 ```csharp
-using CavaPlus.Audio;
+using Pulsewave.Audio;
 
-namespace CavaPlus.Tests.Audio;
+namespace Pulsewave.Tests.Audio;
 
 public class LoudnessTrackerTests
 {
@@ -396,17 +396,17 @@ public class LoudnessTrackerTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter LoudnessTrackerTests
+dotnet test Pulsewave.sln --filter LoudnessTrackerTests
 ```
 
-Expected: FAIL — `CavaPlus.Audio.LoudnessTracker` does not exist.
+Expected: FAIL — `Pulsewave.Audio.LoudnessTracker` does not exist.
 
 - [ ] **Step 3: Implement `LoudnessTracker`**
 
-`src/CavaPlus/Audio/LoudnessTracker.cs`:
+`src/Pulsewave/Audio/LoudnessTracker.cs`:
 
 ```csharp
-namespace CavaPlus.Audio;
+namespace Pulsewave.Audio;
 
 public sealed class LoudnessTracker
 {
@@ -450,7 +450,7 @@ public sealed class LoudnessTracker
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter LoudnessTrackerTests
+dotnet test Pulsewave.sln --filter LoudnessTrackerTests
 ```
 
 Expected: PASS (3 tests).
@@ -458,7 +458,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Audio/LoudnessTracker.cs tests/CavaPlus.Tests/Audio/LoudnessTrackerTests.cs
+git add src/Pulsewave/Audio/LoudnessTracker.cs tests/Pulsewave.Tests/Audio/LoudnessTrackerTests.cs
 git commit -m "feat: add LoudnessTracker for volume-reactive brightness"
 ```
 
@@ -467,19 +467,19 @@ git commit -m "feat: add LoudnessTracker for volume-reactive brightness"
 ### Task 4: BassBeatDetector
 
 **Files:**
-- Create: `src/CavaPlus/Spectrum/BassBeatDetector.cs`
-- Create: `tests/CavaPlus.Tests/Spectrum/BassBeatDetectorTests.cs`
+- Create: `src/Pulsewave/Spectrum/BassBeatDetector.cs`
+- Create: `tests/Pulsewave.Tests/Spectrum/BassBeatDetectorTests.cs`
 
 Stateful but deterministic given synthetic magnitude arrays — no real audio needed, follows TDD.
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Spectrum/BassBeatDetectorTests.cs`:
+`tests/Pulsewave.Tests/Spectrum/BassBeatDetectorTests.cs`:
 
 ```csharp
-using CavaPlus.Spectrum;
+using Pulsewave.Spectrum;
 
-namespace CavaPlus.Tests.Spectrum;
+namespace Pulsewave.Tests.Spectrum;
 
 public class BassBeatDetectorTests
 {
@@ -561,17 +561,17 @@ public class BassBeatDetectorTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter BassBeatDetectorTests
+dotnet test Pulsewave.sln --filter BassBeatDetectorTests
 ```
 
-Expected: FAIL — `CavaPlus.Spectrum.BassBeatDetector` does not exist.
+Expected: FAIL — `Pulsewave.Spectrum.BassBeatDetector` does not exist.
 
 - [ ] **Step 3: Implement `BassBeatDetector`**
 
-`src/CavaPlus/Spectrum/BassBeatDetector.cs`:
+`src/Pulsewave/Spectrum/BassBeatDetector.cs`:
 
 ```csharp
-namespace CavaPlus.Spectrum;
+namespace Pulsewave.Spectrum;
 
 public sealed class BassBeatDetector
 {
@@ -649,7 +649,7 @@ public sealed class BassBeatDetector
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter BassBeatDetectorTests
+dotnet test Pulsewave.sln --filter BassBeatDetectorTests
 ```
 
 Expected: PASS (5 tests).
@@ -657,7 +657,7 @@ Expected: PASS (5 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Spectrum/BassBeatDetector.cs tests/CavaPlus.Tests/Spectrum/BassBeatDetectorTests.cs
+git add src/Pulsewave/Spectrum/BassBeatDetector.cs tests/Pulsewave.Tests/Spectrum/BassBeatDetectorTests.cs
 git commit -m "feat: add BassBeatDetector for bass-onset flash triggering"
 ```
 
@@ -666,15 +666,15 @@ git commit -m "feat: add BassBeatDetector for bass-onset flash triggering"
 ### Task 5: Config — palette and reactive fields
 
 **Files:**
-- Modify: `src/CavaPlus/Config/CavaConfig.cs`
-- Modify: `src/CavaPlus/Config/ConfigLoader.cs`
-- Modify: `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs`
+- Modify: `src/Pulsewave/Config/CavaConfig.cs`
+- Modify: `src/Pulsewave/Config/ConfigLoader.cs`
+- Modify: `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs`
 
 This task also narrows an existing validation rule: "`gradient` needs >= 2 colors when `mode` is `gradient`" must now only apply when `palette` is `"custom"` (a named preset ignores `gradient` entirely). The existing test for that rule must be updated in the same task, otherwise it silently stops testing what it claims to.
 
 - [ ] **Step 1: Modify the existing gradient-validation test to pin `palette = "custom"`**
 
-In `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs`, replace this existing test:
+In `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs`, replace this existing test:
 
 ```csharp
     [Fact]
@@ -709,7 +709,7 @@ with:
 
 - [ ] **Step 2: Append the new failing tests**
 
-Add these four tests to `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs` (inside the `ConfigLoaderTests` class, alongside the existing tests):
+Add these four tests to `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs` (inside the `ConfigLoaderTests` class, alongside the existing tests):
 
 ```csharp
     [Fact]
@@ -792,14 +792,14 @@ Add these four tests to `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs` (insi
 - [ ] **Step 3: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
 Expected: FAIL — `CavaConfig.ColorSection` has no `Palette`/`Reactive` members (compile error).
 
 - [ ] **Step 4: Add `Palette` and `Reactive` to `CavaConfig.ColorSection`**
 
-In `src/CavaPlus/Config/CavaConfig.cs`, modify the `ColorSection` class:
+In `src/Pulsewave/Config/CavaConfig.cs`, modify the `ColorSection` class:
 
 ```csharp
     public sealed class ColorSection
@@ -820,7 +820,7 @@ In `src/CavaPlus/Config/CavaConfig.cs`, modify the `ColorSection` class:
 
 - [ ] **Step 5: Update `ConfigLoader.Validate`**
 
-In `src/CavaPlus/Config/ConfigLoader.cs`, add a static array right below the existing `Options` field:
+In `src/Pulsewave/Config/ConfigLoader.cs`, add a static array right below the existing `Options` field:
 
 ```csharp
     private static readonly string[] ValidPalettes = { "rainbow", "neon", "fire", "ice", "mono", "custom" };
@@ -860,7 +860,7 @@ Then replace the `Validate` method body with:
 - [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
 Expected: PASS (10 tests: 6 pre-existing plus these 4 new ones).
@@ -868,7 +868,7 @@ Expected: PASS (10 tests: 6 pre-existing plus these 4 new ones).
 - [ ] **Step 7: Run the full suite**
 
 ```bash
-dotnet test CavaPlus.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: PASS (58 tests total: 36 pre-existing + 6 `ColorPalettesTests` + 4 `ColorReactivityTests` + 3 `LoudnessTrackerTests` + 5 `BassBeatDetectorTests` + 4 new `ConfigLoaderTests`).
@@ -876,7 +876,7 @@ Expected: PASS (58 tests total: 36 pre-existing + 6 `ColorPalettesTests` + 4 `Co
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/CavaPlus/Config/CavaConfig.cs src/CavaPlus/Config/ConfigLoader.cs tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs
+git add src/Pulsewave/Config/CavaConfig.cs src/Pulsewave/Config/ConfigLoader.cs tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs
 git commit -m "feat: add color.palette and color.reactive config fields"
 ```
 
@@ -885,21 +885,21 @@ git commit -m "feat: add color.palette and color.reactive config fields"
 ### Task 6: Program.cs wiring
 
 **Files:**
-- Modify: `src/CavaPlus/Program.cs`
+- Modify: `src/Pulsewave/Program.cs`
 
 Integration point — no automated tests (same as every prior `Program.cs` task). Build/test verification plus manual end-to-end check (Task 7) are the appropriate checks here. This task also removes the local `ParseHexColor` function, replacing it with the shared `ColorPalettes.ParseHexColor` added in Task 1 — two copies of the same hex-parsing logic would otherwise exist side by side.
 
 - [ ] **Step 1: Replace `Program.cs` with the full content below**
 
-`src/CavaPlus/Program.cs`:
+`src/Pulsewave/Program.cs`:
 
 ```csharp
-using CavaPlus.Audio;
-using CavaPlus.Bars;
-using CavaPlus.Config;
-using CavaPlus.Media;
-using CavaPlus.Rendering;
-using CavaPlus.Spectrum;
+using Pulsewave.Audio;
+using Pulsewave.Bars;
+using Pulsewave.Config;
+using Pulsewave.Media;
+using Pulsewave.Rendering;
+using Pulsewave.Spectrum;
 using Spectre.Console;
 
 string? configPathOverride;
@@ -914,7 +914,7 @@ catch (ConfigException ex)
 }
 
 string configPath = configPathOverride ?? Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CavaPlus", "config.toml");
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Pulsewave", "config.toml");
 
 CavaConfig config;
 try
@@ -1095,8 +1095,8 @@ return 0;
 - [ ] **Step 2: Build and run the full test suite**
 
 ```bash
-dotnet build CavaPlus.sln
-dotnet test CavaPlus.sln
+dotnet build Pulsewave.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: build succeeds, all 58 tests pass (`Program.cs` itself has no unit tests — it's the manual-verification integration point).
@@ -1104,7 +1104,7 @@ Expected: build succeeds, all 58 tests pass (`Program.cs` itself has no unit tes
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/CavaPlus/Program.cs
+git add src/Pulsewave/Program.cs
 git commit -m "feat: wire palette resolution and audio-reactive color into the render loop"
 ```
 
@@ -1117,18 +1117,18 @@ git commit -m "feat: wire palette resolution and audio-reactive color into the r
 - [ ] **Step 1: Republish the self-contained exe**
 
 ```bash
-dotnet publish src/CavaPlus/CavaPlus.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+dotnet publish src/Pulsewave/Pulsewave.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
 ```
 
-Expected: `publish\CavaPlus.exe` is produced (overwriting the previous build).
+Expected: `publish\Pulsewave.exe` is produced (overwriting the previous build).
 
 - [ ] **Step 2: Manual verification in a real terminal**
 
-Run `publish\CavaPlus.exe` (or `dotnet run --project src/CavaPlus`) in an actual Windows Terminal window with music playing, and confirm:
+Run `publish\Pulsewave.exe` (or `dotnet run --project src/Pulsewave`) in an actual Windows Terminal window with music playing, and confirm:
 
 - With `color.reactive = true` (default): bars look dimmer during quiet passages and brighter during loud passages, without being distracting; a bass hit/kick produces a brief, visible flash across the bars that fades out within a couple of frames.
 - The now-playing title/artist row (if enabled) never dims or flashes — it stays legible white throughout.
-- Setting `color.palette` in `%APPDATA%\CavaPlus\config.toml` to each of `rainbow`, `neon`, `fire`, `ice`, `mono`, and `custom` (with a custom `gradient` list) produces the expected gradient in each case.
+- Setting `color.palette` in `%APPDATA%\Pulsewave\config.toml` to each of `rainbow`, `neon`, `fire`, `ice`, `mono`, and `custom` (with a custom `gradient` list) produces the expected gradient in each case.
 - Setting `color.reactive = false` makes the bars look exactly as they did before this feature — only the palette colors change, no brightness pulsing or flashing.
 
 - [ ] **Step 3: No commit needed**

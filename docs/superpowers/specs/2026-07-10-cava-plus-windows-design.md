@@ -1,11 +1,11 @@
-# CavaPlus: audio visualizer para terminal en Windows
+# Pulsewave: audio visualizer para terminal en Windows
 
 **Fecha:** 2026-07-10
 **Estado:** Aprobado para planificación de implementación
 
 ## Contexto y objetivo
 
-[cava](https://github.com/karlstav/cava) es un visualizador de audio de consola para Linux, basado en ALSA/PulseAudio. No existe una versión nativa equivalente para Windows. Este proyecto (`CavaPlus`) construye un visualizador de barras de espectro de audio para terminal, específicamente para Windows, capturando el audio de salida del sistema y dibujando barras estilo cava en tiempo real.
+[cava](https://github.com/karlstav/cava) es un visualizador de audio de consola para Linux, basado en ALSA/PulseAudio. No existe una versión nativa equivalente para Windows. Este proyecto (`Pulsewave`) construye un visualizador de barras de espectro de audio para terminal, específicamente para Windows, capturando el audio de salida del sistema y dibujando barras estilo cava en tiempo real.
 
 **Alcance de esta v1 (MVP):** foco en que la experiencia de uso cotidiano (visualizar lo que suena en Windows Terminal) funcione bien y de forma fluida, dejando fuera del alcance ajustes finos avanzados (framerate configurable, curvas de suavizado custom, noise reduction, número de barras fijo) para una v2 futura.
 
@@ -56,7 +56,7 @@ WASAPI loopback → AudioCapture (hilo captura) → SampleRingBuffer
 
 ### Archivo de config
 
-Formato TOML en `%APPDATA%\CavaPlus\config.toml`. Se genera automáticamente con valores default si no existe al primer arranque.
+Formato TOML en `%APPDATA%\Pulsewave\config.toml`. Se genera automáticamente con valores default si no existe al primer arranque.
 
 ```toml
 [general]

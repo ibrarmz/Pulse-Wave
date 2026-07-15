@@ -1,8 +1,8 @@
-# CavaPlus (Windows audio visualizer) Implementation Plan
+# Pulsewave (Windows audio visualizer) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `CavaPlus`, a C#/.NET 8 console app that visualizes Windows system audio (WASAPI loopback) as cava-style spectrum bars in Windows Terminal.
+**Goal:** Build `Pulsewave`, a C#/.NET 8 console app that visualizes Windows system audio (WASAPI loopback) as cava-style spectrum bars in Windows Terminal.
 
 **Architecture:** A capture thread (NAudio `WasapiLoopbackCapture`) writes stereo float samples into a thread-safe `SampleRingBuffer`. A render loop, running independently at a fixed framerate, reads the latest window from the buffer, runs FFT (`NAudio.Dsp.FastFourierTransform`), maps magnitudes to bar heights with logarithmic frequency grouping (`BarMapper`), builds a pure in-memory frame of glyphs+colors (`BarFrameBuilder`), and draws it with Spectre.Console (`ConsoleRenderer`). Configuration loads from a TOML file with CLI flag overrides.
 
@@ -15,9 +15,9 @@
 ## File structure
 
 ```
-CavaPlus.sln
-src/CavaPlus/
-  CavaPlus.csproj
+Pulsewave.sln
+src/Pulsewave/
+  Pulsewave.csproj
   Program.cs
   Audio/
     SampleRingBuffer.cs      # thread-safe circular buffer of stereo float samples
@@ -35,8 +35,8 @@ src/CavaPlus/
     ConfigException.cs       # config-specific error type
     ConfigLoader.cs          # load/create-default/save/validate config.toml (Tomlyn)
     CliOptions.cs            # parse CLI args, apply overrides on top of CavaConfig
-tests/CavaPlus.Tests/
-  CavaPlus.Tests.csproj
+tests/Pulsewave.Tests/
+  Pulsewave.Tests.csproj
   Audio/SampleRingBufferTests.cs
   Spectrum/SpectrumProcessorTests.cs
   Bars/BarMapperTests.cs
@@ -53,38 +53,38 @@ tests/CavaPlus.Tests/
 ### Task 1: Scaffold solution and projects
 
 **Files:**
-- Create: `CavaPlus.sln`
-- Create: `src/CavaPlus/CavaPlus.csproj`
-- Create: `src/CavaPlus/Program.cs`
-- Create: `tests/CavaPlus.Tests/CavaPlus.Tests.csproj`
-- Create: `tests/CavaPlus.Tests/SanityTests.cs`
+- Create: `Pulsewave.sln`
+- Create: `src/Pulsewave/Pulsewave.csproj`
+- Create: `src/Pulsewave/Program.cs`
+- Create: `tests/Pulsewave.Tests/Pulsewave.Tests.csproj`
+- Create: `tests/Pulsewave.Tests/SanityTests.cs`
 
 - [ ] **Step 1: Create the solution and both projects**
 
 Run from the repo root (`C:\path\to\Pulse-Wave`):
 
 ```bash
-dotnet new sln -n CavaPlus
-dotnet new console -n CavaPlus -o src/CavaPlus --framework net8.0
-dotnet new xunit -n CavaPlus.Tests -o tests/CavaPlus.Tests --framework net8.0
-dotnet sln add src/CavaPlus/CavaPlus.csproj tests/CavaPlus.Tests/CavaPlus.Tests.csproj
-dotnet add tests/CavaPlus.Tests/CavaPlus.Tests.csproj reference src/CavaPlus/CavaPlus.csproj
+dotnet new sln -n Pulsewave
+dotnet new console -n Pulsewave -o src/Pulsewave --framework net8.0
+dotnet new xunit -n Pulsewave.Tests -o tests/Pulsewave.Tests --framework net8.0
+dotnet sln add src/Pulsewave/Pulsewave.csproj tests/Pulsewave.Tests/Pulsewave.Tests.csproj
+dotnet add tests/Pulsewave.Tests/Pulsewave.Tests.csproj reference src/Pulsewave/Pulsewave.csproj
 ```
 
 - [ ] **Step 2: Add NuGet packages to the app project**
 
 ```bash
-dotnet add src/CavaPlus/CavaPlus.csproj package NAudio
-dotnet add src/CavaPlus/CavaPlus.csproj package Spectre.Console
-dotnet add src/CavaPlus/CavaPlus.csproj package Tomlyn
+dotnet add src/Pulsewave/Pulsewave.csproj package NAudio
+dotnet add src/Pulsewave/Pulsewave.csproj package Spectre.Console
+dotnet add src/Pulsewave/Pulsewave.csproj package Tomlyn
 ```
 
 - [ ] **Step 3: Replace the generated `Program.cs` with a placeholder entry point**
 
-`src/CavaPlus/Program.cs`:
+`src/Pulsewave/Program.cs`:
 
 ```csharp
-Console.WriteLine("CavaPlus scaffold ready.");
+Console.WriteLine("Pulsewave scaffold ready.");
 return 0;
 ```
 
@@ -92,10 +92,10 @@ return 0;
 
 - [ ] **Step 4: Write a sanity test**
 
-`tests/CavaPlus.Tests/SanityTests.cs`:
+`tests/Pulsewave.Tests/SanityTests.cs`:
 
 ```csharp
-namespace CavaPlus.Tests;
+namespace Pulsewave.Tests;
 
 public class SanityTests
 {
@@ -110,8 +110,8 @@ public class SanityTests
 - [ ] **Step 5: Run the build and the test suite**
 
 ```bash
-dotnet build CavaPlus.sln
-dotnet test CavaPlus.sln
+dotnet build Pulsewave.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: build succeeds, 1 test passes.
@@ -119,8 +119,8 @@ Expected: build succeeds, 1 test passes.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add CavaPlus.sln src/CavaPlus tests/CavaPlus.Tests
-git commit -m "chore: scaffold CavaPlus solution with app and test projects"
+git add Pulsewave.sln src/Pulsewave tests/Pulsewave.Tests
+git commit -m "chore: scaffold Pulsewave solution with app and test projects"
 ```
 
 ---
@@ -128,17 +128,17 @@ git commit -m "chore: scaffold CavaPlus solution with app and test projects"
 ### Task 2: SampleRingBuffer
 
 **Files:**
-- Create: `src/CavaPlus/Audio/SampleRingBuffer.cs`
-- Create: `tests/CavaPlus.Tests/Audio/SampleRingBufferTests.cs`
+- Create: `src/Pulsewave/Audio/SampleRingBuffer.cs`
+- Create: `tests/Pulsewave.Tests/Audio/SampleRingBufferTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Audio/SampleRingBufferTests.cs`:
+`tests/Pulsewave.Tests/Audio/SampleRingBufferTests.cs`:
 
 ```csharp
-using CavaPlus.Audio;
+using Pulsewave.Audio;
 
-namespace CavaPlus.Tests.Audio;
+namespace Pulsewave.Tests.Audio;
 
 public class SampleRingBufferTests
 {
@@ -189,17 +189,17 @@ public class SampleRingBufferTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter SampleRingBufferTests
+dotnet test Pulsewave.sln --filter SampleRingBufferTests
 ```
 
-Expected: FAIL — `CavaPlus.Audio.SampleRingBuffer` does not exist.
+Expected: FAIL — `Pulsewave.Audio.SampleRingBuffer` does not exist.
 
 - [ ] **Step 3: Implement `SampleRingBuffer`**
 
-`src/CavaPlus/Audio/SampleRingBuffer.cs`:
+`src/Pulsewave/Audio/SampleRingBuffer.cs`:
 
 ```csharp
-namespace CavaPlus.Audio;
+namespace Pulsewave.Audio;
 
 public sealed class SampleRingBuffer
 {
@@ -257,7 +257,7 @@ public sealed class SampleRingBuffer
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter SampleRingBufferTests
+dotnet test Pulsewave.sln --filter SampleRingBufferTests
 ```
 
 Expected: PASS (3 tests).
@@ -265,7 +265,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Audio/SampleRingBuffer.cs tests/CavaPlus.Tests/Audio/SampleRingBufferTests.cs
+git add src/Pulsewave/Audio/SampleRingBuffer.cs tests/Pulsewave.Tests/Audio/SampleRingBufferTests.cs
 git commit -m "feat: add thread-safe SampleRingBuffer for audio samples"
 ```
 
@@ -274,17 +274,17 @@ git commit -m "feat: add thread-safe SampleRingBuffer for audio samples"
 ### Task 3: SpectrumProcessor (windowing + FFT)
 
 **Files:**
-- Create: `src/CavaPlus/Spectrum/SpectrumProcessor.cs`
-- Create: `tests/CavaPlus.Tests/Spectrum/SpectrumProcessorTests.cs`
+- Create: `src/Pulsewave/Spectrum/SpectrumProcessor.cs`
+- Create: `tests/Pulsewave.Tests/Spectrum/SpectrumProcessorTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Spectrum/SpectrumProcessorTests.cs`:
+`tests/Pulsewave.Tests/Spectrum/SpectrumProcessorTests.cs`:
 
 ```csharp
-using CavaPlus.Spectrum;
+using Pulsewave.Spectrum;
 
-namespace CavaPlus.Tests.Spectrum;
+namespace Pulsewave.Tests.Spectrum;
 
 public class SpectrumProcessorTests
 {
@@ -333,19 +333,19 @@ public class SpectrumProcessorTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter SpectrumProcessorTests
+dotnet test Pulsewave.sln --filter SpectrumProcessorTests
 ```
 
-Expected: FAIL — `CavaPlus.Spectrum.SpectrumProcessor` does not exist.
+Expected: FAIL — `Pulsewave.Spectrum.SpectrumProcessor` does not exist.
 
 - [ ] **Step 3: Implement `SpectrumProcessor`**
 
-`src/CavaPlus/Spectrum/SpectrumProcessor.cs`:
+`src/Pulsewave/Spectrum/SpectrumProcessor.cs`:
 
 ```csharp
 using NAudio.Dsp;
 
-namespace CavaPlus.Spectrum;
+namespace Pulsewave.Spectrum;
 
 public sealed class SpectrumProcessor
 {
@@ -405,7 +405,7 @@ public sealed class SpectrumProcessor
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter SpectrumProcessorTests
+dotnet test Pulsewave.sln --filter SpectrumProcessorTests
 ```
 
 Expected: PASS (3 tests).
@@ -413,7 +413,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Spectrum/SpectrumProcessor.cs tests/CavaPlus.Tests/Spectrum/SpectrumProcessorTests.cs
+git add src/Pulsewave/Spectrum/SpectrumProcessor.cs tests/Pulsewave.Tests/Spectrum/SpectrumProcessorTests.cs
 git commit -m "feat: add SpectrumProcessor for windowed FFT magnitude computation"
 ```
 
@@ -422,17 +422,17 @@ git commit -m "feat: add SpectrumProcessor for windowed FFT magnitude computatio
 ### Task 4: BarMapper (log-frequency grouping, sensitivity, smoothing)
 
 **Files:**
-- Create: `src/CavaPlus/Bars/BarMapper.cs`
-- Create: `tests/CavaPlus.Tests/Bars/BarMapperTests.cs`
+- Create: `src/Pulsewave/Bars/BarMapper.cs`
+- Create: `tests/Pulsewave.Tests/Bars/BarMapperTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Bars/BarMapperTests.cs`:
+`tests/Pulsewave.Tests/Bars/BarMapperTests.cs`:
 
 ```csharp
-using CavaPlus.Bars;
+using Pulsewave.Bars;
 
-namespace CavaPlus.Tests.Bars;
+namespace Pulsewave.Tests.Bars;
 
 public class BarMapperTests
 {
@@ -486,17 +486,17 @@ public class BarMapperTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter BarMapperTests
+dotnet test Pulsewave.sln --filter BarMapperTests
 ```
 
-Expected: FAIL — `CavaPlus.Bars.BarMapper` does not exist.
+Expected: FAIL — `Pulsewave.Bars.BarMapper` does not exist.
 
 - [ ] **Step 3: Implement `BarMapper`**
 
-`src/CavaPlus/Bars/BarMapper.cs`:
+`src/Pulsewave/Bars/BarMapper.cs`:
 
 ```csharp
-namespace CavaPlus.Bars;
+namespace Pulsewave.Bars;
 
 public sealed class BarMapper
 {
@@ -578,7 +578,7 @@ public sealed class BarMapper
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter BarMapperTests
+dotnet test Pulsewave.sln --filter BarMapperTests
 ```
 
 Expected: PASS (3 tests).
@@ -586,7 +586,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Bars/BarMapper.cs tests/CavaPlus.Tests/Bars/BarMapperTests.cs
+git add src/Pulsewave/Bars/BarMapper.cs tests/Pulsewave.Tests/Bars/BarMapperTests.cs
 git commit -m "feat: add BarMapper with log-frequency grouping, sensitivity and smoothing"
 ```
 
@@ -595,18 +595,18 @@ git commit -m "feat: add BarMapper with log-frequency grouping, sensitivity and 
 ### Task 5: ColorGradient
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/ColorGradient.cs`
-- Create: `tests/CavaPlus.Tests/Rendering/ColorGradientTests.cs`
+- Create: `src/Pulsewave/Rendering/ColorGradient.cs`
+- Create: `tests/Pulsewave.Tests/Rendering/ColorGradientTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Rendering/ColorGradientTests.cs`:
+`tests/Pulsewave.Tests/Rendering/ColorGradientTests.cs`:
 
 ```csharp
-using CavaPlus.Rendering;
+using Pulsewave.Rendering;
 using Spectre.Console;
 
-namespace CavaPlus.Tests.Rendering;
+namespace Pulsewave.Tests.Rendering;
 
 public class ColorGradientTests
 {
@@ -651,19 +651,19 @@ public class ColorGradientTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorGradientTests
+dotnet test Pulsewave.sln --filter ColorGradientTests
 ```
 
-Expected: FAIL — `CavaPlus.Rendering.ColorGradient` does not exist.
+Expected: FAIL — `Pulsewave.Rendering.ColorGradient` does not exist.
 
 - [ ] **Step 3: Implement `ColorGradient`**
 
-`src/CavaPlus/Rendering/ColorGradient.cs`:
+`src/Pulsewave/Rendering/ColorGradient.cs`:
 
 ```csharp
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public static class ColorGradient
 {
@@ -701,7 +701,7 @@ public static class ColorGradient
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ColorGradientTests
+dotnet test Pulsewave.sln --filter ColorGradientTests
 ```
 
 Expected: PASS (4 tests).
@@ -709,7 +709,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/ColorGradient.cs tests/CavaPlus.Tests/Rendering/ColorGradientTests.cs
+git add src/Pulsewave/Rendering/ColorGradient.cs tests/Pulsewave.Tests/Rendering/ColorGradientTests.cs
 git commit -m "feat: add ColorGradient stop interpolation"
 ```
 
@@ -718,18 +718,18 @@ git commit -m "feat: add ColorGradient stop interpolation"
 ### Task 6: BarFrameBuilder (pure bar-heights -> glyph/color grid)
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/BarFrameBuilder.cs`
-- Create: `tests/CavaPlus.Tests/Rendering/BarFrameBuilderTests.cs`
+- Create: `src/Pulsewave/Rendering/BarFrameBuilder.cs`
+- Create: `tests/Pulsewave.Tests/Rendering/BarFrameBuilderTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Rendering/BarFrameBuilderTests.cs`:
+`tests/Pulsewave.Tests/Rendering/BarFrameBuilderTests.cs`:
 
 ```csharp
-using CavaPlus.Rendering;
+using Pulsewave.Rendering;
 using Spectre.Console;
 
-namespace CavaPlus.Tests.Rendering;
+namespace Pulsewave.Tests.Rendering;
 
 public class BarFrameBuilderTests
 {
@@ -804,19 +804,19 @@ public class BarFrameBuilderTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter BarFrameBuilderTests
+dotnet test Pulsewave.sln --filter BarFrameBuilderTests
 ```
 
-Expected: FAIL — `CavaPlus.Rendering.BarFrameBuilder`, `BarStyle`, `BarCell` do not exist.
+Expected: FAIL — `Pulsewave.Rendering.BarFrameBuilder`, `BarStyle`, `BarCell` do not exist.
 
 - [ ] **Step 3: Implement `BarStyle`, `BarCell` and `BarFrameBuilder`**
 
-`src/CavaPlus/Rendering/BarFrameBuilder.cs`:
+`src/Pulsewave/Rendering/BarFrameBuilder.cs`:
 
 ```csharp
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public enum BarStyle
 {
@@ -898,7 +898,7 @@ public sealed class BarFrameBuilder
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter BarFrameBuilderTests
+dotnet test Pulsewave.sln --filter BarFrameBuilderTests
 ```
 
 Expected: PASS (5 tests).
@@ -906,7 +906,7 @@ Expected: PASS (5 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/BarFrameBuilder.cs tests/CavaPlus.Tests/Rendering/BarFrameBuilderTests.cs
+git add src/Pulsewave/Rendering/BarFrameBuilder.cs tests/Pulsewave.Tests/Rendering/BarFrameBuilderTests.cs
 git commit -m "feat: add BarFrameBuilder for classic and gradient bar styles"
 ```
 
@@ -915,19 +915,19 @@ git commit -m "feat: add BarFrameBuilder for classic and gradient bar styles"
 ### Task 7: Config (CavaConfig, ConfigException, ConfigLoader)
 
 **Files:**
-- Create: `src/CavaPlus/Config/CavaConfig.cs`
-- Create: `src/CavaPlus/Config/ConfigException.cs`
-- Create: `src/CavaPlus/Config/ConfigLoader.cs`
-- Create: `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs`
+- Create: `src/Pulsewave/Config/CavaConfig.cs`
+- Create: `src/Pulsewave/Config/ConfigException.cs`
+- Create: `src/Pulsewave/Config/ConfigLoader.cs`
+- Create: `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs`:
+`tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs`:
 
 ```csharp
-using CavaPlus.Config;
+using Pulsewave.Config;
 
-namespace CavaPlus.Tests.Config;
+namespace Pulsewave.Tests.Config;
 
 public class ConfigLoaderTests
 {
@@ -1015,17 +1015,17 @@ public class ConfigLoaderTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
-Expected: FAIL — `CavaPlus.Config.*` types do not exist.
+Expected: FAIL — `Pulsewave.Config.*` types do not exist.
 
 - [ ] **Step 3: Implement `CavaConfig`**
 
-`src/CavaPlus/Config/CavaConfig.cs`:
+`src/Pulsewave/Config/CavaConfig.cs`:
 
 ```csharp
-namespace CavaPlus.Config;
+namespace Pulsewave.Config;
 
 public sealed class CavaConfig
 {
@@ -1058,10 +1058,10 @@ public sealed class CavaConfig
 
 - [ ] **Step 4: Implement `ConfigException`**
 
-`src/CavaPlus/Config/ConfigException.cs`:
+`src/Pulsewave/Config/ConfigException.cs`:
 
 ```csharp
-namespace CavaPlus.Config;
+namespace Pulsewave.Config;
 
 public sealed class ConfigException : Exception
 {
@@ -1073,12 +1073,12 @@ public sealed class ConfigException : Exception
 
 - [ ] **Step 5: Implement `ConfigLoader`**
 
-`src/CavaPlus/Config/ConfigLoader.cs`:
+`src/Pulsewave/Config/ConfigLoader.cs`:
 
 ```csharp
 using Tomlyn;
 
-namespace CavaPlus.Config;
+namespace Pulsewave.Config;
 
 public static class ConfigLoader
 {
@@ -1146,7 +1146,7 @@ public static class ConfigLoader
 - [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
 Expected: PASS (4 tests).
@@ -1154,7 +1154,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/CavaPlus/Config/CavaConfig.cs src/CavaPlus/Config/ConfigException.cs src/CavaPlus/Config/ConfigLoader.cs tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs
+git add src/Pulsewave/Config/CavaConfig.cs src/Pulsewave/Config/ConfigException.cs src/Pulsewave/Config/ConfigLoader.cs tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs
 git commit -m "feat: add CavaConfig model and TOML load/save/validate"
 ```
 
@@ -1163,17 +1163,17 @@ git commit -m "feat: add CavaConfig model and TOML load/save/validate"
 ### Task 8: CliOptions
 
 **Files:**
-- Create: `src/CavaPlus/Config/CliOptions.cs`
-- Create: `tests/CavaPlus.Tests/Config/CliOptionsTests.cs`
+- Create: `src/Pulsewave/Config/CliOptions.cs`
+- Create: `tests/Pulsewave.Tests/Config/CliOptionsTests.cs`
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Config/CliOptionsTests.cs`:
+`tests/Pulsewave.Tests/Config/CliOptionsTests.cs`:
 
 ```csharp
-using CavaPlus.Config;
+using Pulsewave.Config;
 
-namespace CavaPlus.Tests.Config;
+namespace Pulsewave.Tests.Config;
 
 public class CliOptionsTests
 {
@@ -1228,19 +1228,19 @@ public class CliOptionsTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter CliOptionsTests
+dotnet test Pulsewave.sln --filter CliOptionsTests
 ```
 
-Expected: FAIL — `CavaPlus.Config.CliOptions` does not exist.
+Expected: FAIL — `Pulsewave.Config.CliOptions` does not exist.
 
 - [ ] **Step 3: Implement `CliOptions`**
 
-`src/CavaPlus/Config/CliOptions.cs`:
+`src/Pulsewave/Config/CliOptions.cs`:
 
 ```csharp
 using System.Globalization;
 
-namespace CavaPlus.Config;
+namespace Pulsewave.Config;
 
 public static class CliOptions
 {
@@ -1300,7 +1300,7 @@ public static class CliOptions
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter CliOptionsTests
+dotnet test Pulsewave.sln --filter CliOptionsTests
 ```
 
 Expected: PASS (6 tests).
@@ -1308,7 +1308,7 @@ Expected: PASS (6 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Config/CliOptions.cs tests/CavaPlus.Tests/Config/CliOptionsTests.cs
+git add src/Pulsewave/Config/CliOptions.cs tests/Pulsewave.Tests/Config/CliOptionsTests.cs
 git commit -m "feat: add CLI flag parsing and overrides"
 ```
 
@@ -1317,18 +1317,18 @@ git commit -m "feat: add CLI flag parsing and overrides"
 ### Task 9: AudioCapture (WASAPI loopback)
 
 **Files:**
-- Create: `src/CavaPlus/Audio/AudioCapture.cs`
+- Create: `src/Pulsewave/Audio/AudioCapture.cs`
 
 This wraps real Windows audio hardware — it cannot run in an automated test environment (no WASAPI device in CI). It's validated manually, per the spec's testing section.
 
 - [ ] **Step 1: Implement `AudioCapture`**
 
-`src/CavaPlus/Audio/AudioCapture.cs`:
+`src/Pulsewave/Audio/AudioCapture.cs`:
 
 ```csharp
 using NAudio.Wave;
 
-namespace CavaPlus.Audio;
+namespace Pulsewave.Audio;
 
 public sealed class AudioCapture : IDisposable
 {
@@ -1345,14 +1345,14 @@ public sealed class AudioCapture : IDisposable
         if (_capture.WaveFormat.Channels != 2)
         {
             throw new NotSupportedException(
-                $"CavaPlus solo soporta dispositivos de salida estéreo (2 canales); " +
+                $"Pulsewave solo soporta dispositivos de salida estéreo (2 canales); " +
                 $"el dispositivo activo reporta {_capture.WaveFormat.Channels} canal(es).");
         }
         if (_capture.WaveFormat.BitsPerSample != 32 ||
             _capture.WaveFormat.Encoding != WaveFormatEncoding.IeeeFloat)
         {
             throw new NotSupportedException(
-                "CavaPlus espera un formato de captura WASAPI IEEE float de 32 bits, " +
+                "Pulsewave espera un formato de captura WASAPI IEEE float de 32 bits, " +
                 $"pero el dispositivo reporta {_capture.WaveFormat.BitsPerSample} bits / {_capture.WaveFormat.Encoding}.");
         }
 
@@ -1386,17 +1386,17 @@ public sealed class AudioCapture : IDisposable
 - [ ] **Step 2: Build to verify it compiles**
 
 ```bash
-dotnet build CavaPlus.sln
+dotnet build Pulsewave.sln
 ```
 
 Expected: build succeeds.
 
 - [ ] **Step 3: Manual verification**
 
-Write a temporary throwaway snippet in `src/CavaPlus/Program.cs` (do not commit this version — Task 11 replaces `Program.cs` for good):
+Write a temporary throwaway snippet in `src/Pulsewave/Program.cs` (do not commit this version — Task 11 replaces `Program.cs` for good):
 
 ```csharp
-using CavaPlus.Audio;
+using Pulsewave.Audio;
 
 var buffer = new SampleRingBuffer(capacityPerChannel: 4096);
 using var capture = new AudioCapture(buffer);
@@ -1411,12 +1411,12 @@ buffer.ReadLatest(1024, left, right);
 Console.WriteLine($"Max abs sample seen: {Math.Max(left.Max(Math.Abs), right.Max(Math.Abs))}");
 ```
 
-Run `dotnet run --project src/CavaPlus`, play some audio (e.g. a YouTube video) while it's capturing, press Enter, and confirm the printed max sample is non-zero (evidence loopback capture is actually receiving audio). Revert `Program.cs` back to the Task 1 placeholder afterward — do not commit the throwaway snippet.
+Run `dotnet run --project src/Pulsewave`, play some audio (e.g. a YouTube video) while it's capturing, press Enter, and confirm the printed max sample is non-zero (evidence loopback capture is actually receiving audio). Revert `Program.cs` back to the Task 1 placeholder afterward — do not commit the throwaway snippet.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/CavaPlus/Audio/AudioCapture.cs
+git add src/Pulsewave/Audio/AudioCapture.cs
 git commit -m "feat: add WASAPI loopback AudioCapture writing into SampleRingBuffer"
 ```
 
@@ -1425,19 +1425,19 @@ git commit -m "feat: add WASAPI loopback AudioCapture writing into SampleRingBuf
 ### Task 10: ConsoleRenderer
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/ConsoleRenderer.cs`
+- Create: `src/Pulsewave/Rendering/ConsoleRenderer.cs`
 
 This writes directly to the real console — validated manually (visual output), not with automated tests.
 
 - [ ] **Step 1: Implement `ConsoleRenderer`**
 
-`src/CavaPlus/Rendering/ConsoleRenderer.cs`:
+`src/Pulsewave/Rendering/ConsoleRenderer.cs`:
 
 ```csharp
 using System.Text;
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public sealed class ConsoleRenderer
 {
@@ -1504,7 +1504,7 @@ public sealed class ConsoleRenderer
 - [ ] **Step 2: Build to verify it compiles**
 
 ```bash
-dotnet build CavaPlus.sln
+dotnet build Pulsewave.sln
 ```
 
 Expected: build succeeds.
@@ -1512,7 +1512,7 @@ Expected: build succeeds.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/ConsoleRenderer.cs
+git add src/Pulsewave/Rendering/ConsoleRenderer.cs
 git commit -m "feat: add ConsoleRenderer for drawing BarCell grids via Spectre.Console"
 ```
 
@@ -1521,20 +1521,20 @@ git commit -m "feat: add ConsoleRenderer for drawing BarCell grids via Spectre.C
 ### Task 11: Program wiring (the real entry point)
 
 **Files:**
-- Modify: `src/CavaPlus/Program.cs`
+- Modify: `src/Pulsewave/Program.cs`
 
 This is the integration point for every component above. It's validated manually end-to-end (per the spec, no automated integration tests) — Step 3 below is the manual test.
 
 - [ ] **Step 1: Replace `Program.cs` with the full pipeline**
 
-`src/CavaPlus/Program.cs`:
+`src/Pulsewave/Program.cs`:
 
 ```csharp
-using CavaPlus.Audio;
-using CavaPlus.Bars;
-using CavaPlus.Config;
-using CavaPlus.Rendering;
-using CavaPlus.Spectrum;
+using Pulsewave.Audio;
+using Pulsewave.Bars;
+using Pulsewave.Config;
+using Pulsewave.Rendering;
+using Pulsewave.Spectrum;
 using Spectre.Console;
 
 string? configPathOverride;
@@ -1549,7 +1549,7 @@ catch (ConfigException ex)
 }
 
 string configPath = configPathOverride ?? Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CavaPlus", "config.toml");
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Pulsewave", "config.toml");
 
 CavaConfig config;
 try
@@ -1670,8 +1670,8 @@ static Color ParseHexColor(string hex)
 - [ ] **Step 2: Build and run the full test suite**
 
 ```bash
-dotnet build CavaPlus.sln
-dotnet test CavaPlus.sln
+dotnet build Pulsewave.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: build succeeds, all unit tests from Tasks 2-8 still pass (Program.cs itself has no unit tests — it's the manual-verification integration point).
@@ -1679,20 +1679,20 @@ Expected: build succeeds, all unit tests from Tasks 2-8 still pass (Program.cs i
 - [ ] **Step 3: Manual end-to-end verification**
 
 ```bash
-dotnet run --project src/CavaPlus
+dotnet run --project src/Pulsewave
 ```
 
 In Windows Terminal, with some audio playing (e.g. music or a video):
 - Confirm bars appear and move in response to the audio.
-- Confirm the config file was created at `%APPDATA%\CavaPlus\config.toml`.
-- Try `dotnet run --project src/CavaPlus -- --style gradient --channels mono` and confirm the style/channel change takes effect.
+- Confirm the config file was created at `%APPDATA%\Pulsewave\config.toml`.
+- Try `dotnet run --project src/Pulsewave -- --style gradient --channels mono` and confirm the style/channel change takes effect.
 - Resize the terminal window while it's running and confirm the bars re-layout to the new width/height without crashing.
 - Press Ctrl+C and confirm the cursor becomes visible again and the terminal is left in a clean state.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/CavaPlus/Program.cs
+git add src/Pulsewave/Program.cs
 git commit -m "feat: wire audio capture, spectrum processing, and rendering into the main pipeline"
 ```
 
@@ -1705,26 +1705,26 @@ git commit -m "feat: wire audio capture, spectrum processing, and rendering into
 - [ ] **Step 1: Publish a self-contained single-file executable**
 
 ```bash
-dotnet publish src/CavaPlus/CavaPlus.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+dotnet publish src/Pulsewave/Pulsewave.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
 ```
 
-Expected: `publish\CavaPlus.exe` is produced.
+Expected: `publish\Pulsewave.exe` is produced.
 
 - [ ] **Step 2: Manual verification on a clean run**
 
 ```bash
-publish\CavaPlus.exe
+publish\Pulsewave.exe
 ```
 
 Confirm it runs and renders bars the same as `dotnet run` did in Task 11, without requiring the .NET SDK/runtime to be separately installed (the point of `--self-contained true`).
 
 - [ ] **Step 3: Commit build configuration if anything changed**
 
-If Step 1 required no source changes, there is nothing to commit — publishing is a build output, not source. If you added publish-related MSBuild properties to `CavaPlus.csproj` to simplify the command (e.g. baking in `<PublishSingleFile>true</PublishSingleFile>` and `<SelfContained>true</SelfContained>`), commit that:
+If Step 1 required no source changes, there is nothing to commit — publishing is a build output, not source. If you added publish-related MSBuild properties to `Pulsewave.csproj` to simplify the command (e.g. baking in `<PublishSingleFile>true</PublishSingleFile>` and `<SelfContained>true</SelfContained>`), commit that:
 
 ```bash
-git add src/CavaPlus/CavaPlus.csproj
-git commit -m "chore: bake self-contained single-file publish settings into CavaPlus.csproj"
+git add src/Pulsewave/Pulsewave.csproj
+git commit -m "chore: bake self-contained single-file publish settings into Pulsewave.csproj"
 ```
 
 ---

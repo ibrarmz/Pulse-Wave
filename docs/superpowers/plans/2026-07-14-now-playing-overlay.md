@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show "Título — Artista" of whatever is currently playing on Windows, centered on the top row of CavaPlus's bar display.
+**Goal:** Show "Título — Artista" of whatever is currently playing on Windows, centered on the top row of Pulsewave's bar display.
 
 **Architecture:** `NowPlayingWatcher` wraps `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`, subscribing once to its session-change/media-property-change events and exposing a thread-safe `Current` snapshot (same producer/reader pattern already used by `SampleRingBuffer`). Each render frame, `Program.cs` reads that snapshot (non-blocking) and overwrites the top row of the `BarCell[,]` frame with centered text via a new pure `OverlayText` helper, before handing the frame to `ConsoleRenderer`.
 
@@ -16,8 +16,8 @@
 ## File structure
 
 ```
-src/CavaPlus/
-  CavaPlus.csproj                    # TargetFramework -> net8.0-windows10.0.19041.0
+src/Pulsewave/
+  Pulsewave.csproj                    # TargetFramework -> net8.0-windows10.0.19041.0
   Program.cs                         # wire NowPlayingWatcher + OverlayText into the render loop
   Media/
     NowPlayingInfo.cs                # record (Title, Artist)
@@ -26,7 +26,7 @@ src/CavaPlus/
     OverlayText.cs                   # pure: BarCell[,] + text + row + color -> mutated frame
   Config/
     CavaConfig.cs                    # + NowPlayingSection (Enabled, Placeholder)
-tests/CavaPlus.Tests/
+tests/Pulsewave.Tests/
   Rendering/OverlayTextTests.cs      # new
   Config/ConfigLoaderTests.cs        # + 2 new tests for the NowPlaying section
 ```
@@ -38,13 +38,13 @@ tests/CavaPlus.Tests/
 ### Task 1: Retarget the project to a Windows-specific TFM
 
 **Files:**
-- Modify: `src/CavaPlus/CavaPlus.csproj`
+- Modify: `src/Pulsewave/Pulsewave.csproj`
 
 This is a prerequisite for every later task — `Windows.Media.Control` types don't resolve under the generic `net8.0` moniker.
 
 - [ ] **Step 1: Change the TargetFramework**
 
-`src/CavaPlus/CavaPlus.csproj`:
+`src/Pulsewave/Pulsewave.csproj`:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -70,8 +70,8 @@ This is a prerequisite for every later task — `Windows.Media.Control` types do
 - [ ] **Step 2: Build the whole solution and run the full test suite**
 
 ```bash
-dotnet build CavaPlus.sln
-dotnet test CavaPlus.sln
+dotnet build Pulsewave.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: build succeeds (the test project stays on plain `net8.0` and can still reference the now Windows-targeted app project without issue), all 30 existing tests still pass.
@@ -79,8 +79,8 @@ Expected: build succeeds (the test project stays on plain `net8.0` and can still
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/CavaPlus/CavaPlus.csproj
-git commit -m "chore: retarget CavaPlus to net8.0-windows10.0.19041.0 for Windows.Media.Control"
+git add src/Pulsewave/Pulsewave.csproj
+git commit -m "chore: retarget Pulsewave to net8.0-windows10.0.19041.0 for Windows.Media.Control"
 ```
 
 ---
@@ -88,29 +88,29 @@ git commit -m "chore: retarget CavaPlus to net8.0-windows10.0.19041.0 for Window
 ### Task 2: NowPlayingInfo + NowPlayingWatcher
 
 **Files:**
-- Create: `src/CavaPlus/Media/NowPlayingInfo.cs`
-- Create: `src/CavaPlus/Media/NowPlayingWatcher.cs`
+- Create: `src/Pulsewave/Media/NowPlayingInfo.cs`
+- Create: `src/Pulsewave/Media/NowPlayingWatcher.cs`
 
 This wraps a real Windows Runtime API (live OS media sessions) — like `AudioCapture` in the original plan, it has no automated unit tests. It's implemented directly (no TDD ceremony) and validated with a manual smoke check.
 
 - [ ] **Step 1: Implement `NowPlayingInfo`**
 
-`src/CavaPlus/Media/NowPlayingInfo.cs`:
+`src/Pulsewave/Media/NowPlayingInfo.cs`:
 
 ```csharp
-namespace CavaPlus.Media;
+namespace Pulsewave.Media;
 
 public sealed record NowPlayingInfo(string Title, string Artist);
 ```
 
 - [ ] **Step 2: Implement `NowPlayingWatcher`**
 
-`src/CavaPlus/Media/NowPlayingWatcher.cs`:
+`src/Pulsewave/Media/NowPlayingWatcher.cs`:
 
 ```csharp
 using Windows.Media.Control;
 
-namespace CavaPlus.Media;
+namespace Pulsewave.Media;
 
 public sealed class NowPlayingWatcher
 {
@@ -200,17 +200,17 @@ public sealed class NowPlayingWatcher
 - [ ] **Step 3: Build to verify it compiles**
 
 ```bash
-dotnet build CavaPlus.sln
+dotnet build Pulsewave.sln
 ```
 
 Expected: build succeeds.
 
 - [ ] **Step 4: Manual smoke test**
 
-Temporarily write this into `src/CavaPlus/Program.cs` (do NOT commit this — Task 5 replaces `Program.cs` for real; revert to the current committed version before committing this task):
+Temporarily write this into `src/Pulsewave/Program.cs` (do NOT commit this — Task 5 replaces `Program.cs` for real; revert to the current committed version before committing this task):
 
 ```csharp
-using CavaPlus.Media;
+using Pulsewave.Media;
 
 var watcher = new NowPlayingWatcher();
 await watcher.StartAsync();
@@ -223,12 +223,12 @@ for (int i = 0; i < 10; i++)
 }
 ```
 
-Run `dotnet run --project src/CavaPlus`, play something (e.g. a YouTube video or Spotify) during the 10 seconds, and confirm the title/artist appears and updates if you change tracks. This does NOT require a real console handle (no `Console.CursorVisible`/`SetCursorPosition` calls here), so it should run fine even in a non-interactive shell. After confirming, revert `Program.cs` to its last committed state (`git checkout -- src/CavaPlus/Program.cs`) before proceeding.
+Run `dotnet run --project src/Pulsewave`, play something (e.g. a YouTube video or Spotify) during the 10 seconds, and confirm the title/artist appears and updates if you change tracks. This does NOT require a real console handle (no `Console.CursorVisible`/`SetCursorPosition` calls here), so it should run fine even in a non-interactive shell. After confirming, revert `Program.cs` to its last committed state (`git checkout -- src/Pulsewave/Program.cs`) before proceeding.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Media/NowPlayingInfo.cs src/CavaPlus/Media/NowPlayingWatcher.cs
+git add src/Pulsewave/Media/NowPlayingInfo.cs src/Pulsewave/Media/NowPlayingWatcher.cs
 git commit -m "feat: add NowPlayingWatcher wrapping the system media session manager"
 ```
 
@@ -237,20 +237,20 @@ git commit -m "feat: add NowPlayingWatcher wrapping the system media session man
 ### Task 3: OverlayText
 
 **Files:**
-- Create: `src/CavaPlus/Rendering/OverlayText.cs`
-- Create: `tests/CavaPlus.Tests/Rendering/OverlayTextTests.cs`
+- Create: `src/Pulsewave/Rendering/OverlayText.cs`
+- Create: `tests/Pulsewave.Tests/Rendering/OverlayTextTests.cs`
 
 Pure grid/text math, no I/O — fully unit-testable, follows TDD.
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/CavaPlus.Tests/Rendering/OverlayTextTests.cs`:
+`tests/Pulsewave.Tests/Rendering/OverlayTextTests.cs`:
 
 ```csharp
-using CavaPlus.Rendering;
+using Pulsewave.Rendering;
 using Spectre.Console;
 
-namespace CavaPlus.Tests.Rendering;
+namespace Pulsewave.Tests.Rendering;
 
 public class OverlayTextTests
 {
@@ -320,19 +320,19 @@ public class OverlayTextTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter OverlayTextTests
+dotnet test Pulsewave.sln --filter OverlayTextTests
 ```
 
-Expected: FAIL — `CavaPlus.Rendering.OverlayText` does not exist.
+Expected: FAIL — `Pulsewave.Rendering.OverlayText` does not exist.
 
 - [ ] **Step 3: Implement `OverlayText`**
 
-`src/CavaPlus/Rendering/OverlayText.cs`:
+`src/Pulsewave/Rendering/OverlayText.cs`:
 
 ```csharp
 using Spectre.Console;
 
-namespace CavaPlus.Rendering;
+namespace Pulsewave.Rendering;
 
 public static class OverlayText
 {
@@ -379,7 +379,7 @@ public static class OverlayText
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter OverlayTextTests
+dotnet test Pulsewave.sln --filter OverlayTextTests
 ```
 
 Expected: PASS (4 tests).
@@ -387,7 +387,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/CavaPlus/Rendering/OverlayText.cs tests/CavaPlus.Tests/Rendering/OverlayTextTests.cs
+git add src/Pulsewave/Rendering/OverlayText.cs tests/Pulsewave.Tests/Rendering/OverlayTextTests.cs
 git commit -m "feat: add OverlayText for centering text onto a BarCell frame row"
 ```
 
@@ -396,14 +396,14 @@ git commit -m "feat: add OverlayText for centering text onto a BarCell frame row
 ### Task 4: Config — NowPlaying section
 
 **Files:**
-- Modify: `src/CavaPlus/Config/CavaConfig.cs`
-- Modify: `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs`
+- Modify: `src/Pulsewave/Config/CavaConfig.cs`
+- Modify: `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs`
 
 **Important naming detail:** `ConfigLoader` maps C# PascalCase property names to TOML keys via `JsonNamingPolicy.CamelCase`, which only lowercases the *first* letter (e.g. `Framerate` → `framerate`, and a two-word name like `NowPlaying` → `nowPlaying`, NOT `nowplaying`). The design spec's TOML example used `[nowplaying]`, but the real serializer produces `[nowPlaying]` for a C# property named `NowPlaying` — this task uses `[nowPlaying]` (verified against the actual behavior below) rather than the spec's illustrative all-lowercase example.
 
 - [ ] **Step 1: Write the failing tests**
 
-Add these two tests to the existing `tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs` (append inside the `ConfigLoaderTests` class, alongside the existing tests — do not remove anything already there):
+Add these two tests to the existing `tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs` (append inside the `ConfigLoaderTests` class, alongside the existing tests — do not remove anything already there):
 
 ```csharp
     [Fact]
@@ -465,17 +465,17 @@ Add these two tests to the existing `tests/CavaPlus.Tests/Config/ConfigLoaderTes
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
 Expected: FAIL — `CavaConfig` has no `NowPlaying` member (compile error).
 
 - [ ] **Step 3: Add `NowPlayingSection` to `CavaConfig`**
 
-In `src/CavaPlus/Config/CavaConfig.cs`, add a new property to the `CavaConfig` class and a new nested section class (leave `GeneralSection`, `BarsSection`, `ColorSection` exactly as they are):
+In `src/Pulsewave/Config/CavaConfig.cs`, add a new property to the `CavaConfig` class and a new nested section class (leave `GeneralSection`, `BarsSection`, `ColorSection` exactly as they are):
 
 ```csharp
-namespace CavaPlus.Config;
+namespace Pulsewave.Config;
 
 public sealed class CavaConfig
 {
@@ -520,7 +520,7 @@ public sealed class CavaConfig
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-dotnet test CavaPlus.sln --filter ConfigLoaderTests
+dotnet test Pulsewave.sln --filter ConfigLoaderTests
 ```
 
 Expected: PASS (6 tests: the 4 pre-existing plus these 2 new ones).
@@ -530,7 +530,7 @@ If `LoadOrCreateDefault_WithExistingValidFile_ParsesNowPlayingSection` fails wit
 - [ ] **Step 5: Run the full suite**
 
 ```bash
-dotnet test CavaPlus.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: PASS (32 tests total — this confirms the pre-existing `LoadOrCreateDefault_WithExistingValidFile_ReturnsParsedValues` test, whose TOML text has no `[nowPlaying]` section, still passes with `NowPlaying` quietly taking its class defaults).
@@ -538,7 +538,7 @@ Expected: PASS (32 tests total — this confirms the pre-existing `LoadOrCreateD
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/CavaPlus/Config/CavaConfig.cs tests/CavaPlus.Tests/Config/ConfigLoaderTests.cs
+git add src/Pulsewave/Config/CavaConfig.cs tests/Pulsewave.Tests/Config/ConfigLoaderTests.cs
 git commit -m "feat: add NowPlaying config section (enabled, placeholder)"
 ```
 
@@ -547,21 +547,21 @@ git commit -m "feat: add NowPlaying config section (enabled, placeholder)"
 ### Task 5: Program.cs wiring
 
 **Files:**
-- Modify: `src/CavaPlus/Program.cs`
+- Modify: `src/Pulsewave/Program.cs`
 
 Integration point — no automated tests (same as the original plan's Program.cs task). Build/test verification plus a manual end-to-end check (Task 6) are the appropriate checks here.
 
 - [ ] **Step 1: Replace `Program.cs` with the full content below**
 
-`src/CavaPlus/Program.cs`:
+`src/Pulsewave/Program.cs`:
 
 ```csharp
-using CavaPlus.Audio;
-using CavaPlus.Bars;
-using CavaPlus.Config;
-using CavaPlus.Media;
-using CavaPlus.Rendering;
-using CavaPlus.Spectrum;
+using Pulsewave.Audio;
+using Pulsewave.Bars;
+using Pulsewave.Config;
+using Pulsewave.Media;
+using Pulsewave.Rendering;
+using Pulsewave.Spectrum;
 using Spectre.Console;
 
 string? configPathOverride;
@@ -576,7 +576,7 @@ catch (ConfigException ex)
 }
 
 string configPath = configPathOverride ?? Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CavaPlus", "config.toml");
+    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Pulsewave", "config.toml");
 
 CavaConfig config;
 try
@@ -749,8 +749,8 @@ static Color ParseHexColor(string hex)
 - [ ] **Step 2: Build and run the full test suite**
 
 ```bash
-dotnet build CavaPlus.sln
-dotnet test CavaPlus.sln
+dotnet build Pulsewave.sln
+dotnet test Pulsewave.sln
 ```
 
 Expected: build succeeds, all 32 tests pass (`Program.cs` itself has no unit tests — it's the manual-verification integration point, same as in the original plan).
@@ -758,7 +758,7 @@ Expected: build succeeds, all 32 tests pass (`Program.cs` itself has no unit tes
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/CavaPlus/Program.cs
+git add src/Pulsewave/Program.cs
 git commit -m "feat: overlay now-playing title/artist on the top row of the display"
 ```
 
@@ -771,14 +771,14 @@ git commit -m "feat: overlay now-playing title/artist on the top row of the disp
 - [ ] **Step 1: Republish the self-contained exe**
 
 ```bash
-dotnet publish src/CavaPlus/CavaPlus.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+dotnet publish src/Pulsewave/Pulsewave.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
 ```
 
-Expected: `publish\CavaPlus.exe` is produced (overwriting the previous build).
+Expected: `publish\Pulsewave.exe` is produced (overwriting the previous build).
 
 - [ ] **Step 2: Manual verification in a real terminal**
 
-This cannot be done from a non-interactive shell (same console-handle limitation already established for `ConsoleRenderer` in the original plan — `Console.CursorVisible`/`Console.SetCursorPosition` throw outside a real attached console). Run `publish\CavaPlus.exe` (or `dotnet run --project src/CavaPlus`) in an actual Windows Terminal window, with `nowPlaying.enabled = true` (the default) in `%APPDATA%\CavaPlus\config.toml`, and confirm:
+This cannot be done from a non-interactive shell (same console-handle limitation already established for `ConsoleRenderer` in the original plan — `Console.CursorVisible`/`Console.SetCursorPosition` throw outside a real attached console). Run `publish\Pulsewave.exe` (or `dotnet run --project src/Pulsewave`) in an actual Windows Terminal window, with `nowPlaying.enabled = true` (the default) in `%APPDATA%\Pulsewave\config.toml`, and confirm:
 
 - With something playing (Spotify, a YouTube tab, etc.), the top row shows `"Título — Artista"` centered.
 - Changing tracks updates the text without restarting the app.

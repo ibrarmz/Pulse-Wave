@@ -1,4 +1,4 @@
-# CavaPlus: paletas y color reactivo al audio
+# Pulsewave: paletas y color reactivo al audio
 
 **Fecha:** 2026-07-15
 **Estado:** Aprobado para planificación de implementación
@@ -6,7 +6,7 @@
 
 ## Contexto y objetivo
 
-CavaPlus ya tiene el pipeline de visualización funcionando (WASAPI loopback → FFT → barras con gradiente por altura → overlay de now-playing → render en terminal), sobre la rama `feature/cavaplus-mvp`. Esta feature agrega dos cosas independientes para que la visualización se sienta más viva:
+Pulsewave ya tiene el pipeline de visualización funcionando (WASAPI loopback → FFT → barras con gradiente por altura → overlay de now-playing → render en terminal), sobre la rama `feature/cavaplus-mvp`. Esta feature agrega dos cosas independientes para que la visualización se sienta más viva:
 
 1. **Paletas de color seleccionables** — además del arcoíris actual (ahora nombrado `rainbow`), agregar `neon`, `fire`, `ice` y `mono` como opciones de `config.toml`.
 2. **Color reactivo al audio** — el brillo de las barras respira con el volumen general de la canción, y un flash breve ilumina todas las barras en golpes fuertes de graves (kick/bajo).
@@ -19,7 +19,7 @@ El pipeline de render por frame pasa de `BuildFrame → OverlayText → Render` 
 
 ### Componentes nuevos
 
-- **`ColorPalettes`** (`src/CavaPlus/Rendering/ColorPalettes.cs`) — lookup estático puro:
+- **`ColorPalettes`** (`src/Pulsewave/Rendering/ColorPalettes.cs`) — lookup estático puro:
 
   ```csharp
   public static List<Color> Resolve(string paletteName, List<string> customGradientHex)
@@ -35,7 +35,7 @@ El pipeline de render por frame pasa de `BuildFrame → OverlayText → Render` 
 
   Solo se usa cuando `config.Color.Mode == "gradient"`. En modo `solid`, `config.Color.Solid` sigue siendo la única fuente de color, sin cambios.
 
-- **`LoudnessTracker`** (`src/CavaPlus/Audio/LoudnessTracker.cs`) — clase con estado (mismo estilo que `BarMapper`, que ya usa escalado de pico adaptativo):
+- **`LoudnessTracker`** (`src/Pulsewave/Audio/LoudnessTracker.cs`) — clase con estado (mismo estilo que `BarMapper`, que ya usa escalado de pico adaptativo):
   - `Update(float[] leftSamples, float[] rightSamples) -> float brightnessFactor`.
   - Calcula el RMS combinado de ambos canales del frame actual.
   - Mantiene un pico interno que decae lentamente (`peak = Math.Max(currentRms, peak * 0.995)` por frame) — sube instantáneo en partes fuertes, baja gradual en partes tranquilas, para que la reactividad sea relativa a la dinámica de la canción y no al volumen absoluto del sistema.
@@ -43,14 +43,14 @@ El pipeline de render por frame pasa de `BuildFrame → OverlayText → Render` 
   - Brillo objetivo: `0.7 + 0.3 * loudnessFraction` (rango sutil, decidido en brainstorming).
   - Suaviza el resultado frame a frame con una media móvil exponencial (factor `0.15`) para que "respire" en vez de saltar.
 
-- **`BassBeatDetector`** (`src/CavaPlus/Spectrum/BassBeatDetector.cs`) — clase con estado:
+- **`BassBeatDetector`** (`src/Pulsewave/Spectrum/BassBeatDetector.cs`) — clase con estado:
   - `Update(float[] magnitudes) -> float flashIntensity` (recibe las magnitudes FFT ya calculadas por `SpectrumProcessor` cada frame; usa la sub-banda de graves, aprox. por debajo de ~150 Hz, calculada a partir de `sampleRate`/`fftLength` igual que ya hace `BarMapper` para mapear bins a frecuencia).
   - Mantiene una línea base (`baseline`) de energía de graves, suavizada lentamente (factor `0.05`) en todo momento.
   - Dispara `flashIntensity = 1.0` cuando la energía actual de graves supera `baseline * 1.6` **y** supera un piso mínimo absoluto (evita falsos positivos en silencio casi total, donde cualquier ruido parecería un "pico" relativo) **y** no está en cooldown.
   - Cooldown de ~6 frames tras un disparo, para no re-disparar en una nota de bajo sostenida.
   - Sin disparo nuevo, `flashIntensity` decae multiplicándose por `0.5` cada frame (se apaga en 2-3 frames).
 
-- **`ColorReactivity`** (`src/CavaPlus/Rendering/ColorReactivity.cs`) — función estática pura:
+- **`ColorReactivity`** (`src/Pulsewave/Rendering/ColorReactivity.cs`) — función estática pura:
 
   ```csharp
   public static void Apply(BarCell[,] frame, float brightnessFactor, float flashIntensity)

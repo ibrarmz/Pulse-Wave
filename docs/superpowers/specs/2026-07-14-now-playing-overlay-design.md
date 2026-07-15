@@ -1,32 +1,32 @@
-# CavaPlus: overlay de "qué se está escuchando"
+# Pulsewave: overlay de "qué se está escuchando"
 
 **Fecha:** 2026-07-14
 **Estado:** Aprobado para planificación de implementación
-**Depende de:** `docs/superpowers/specs/2026-07-10-cava-plus-windows-design.md` (spec original de CavaPlus)
+**Depende de:** `docs/superpowers/specs/2026-07-10-cava-plus-windows-design.md` (spec original de Pulsewave)
 
 ## Contexto y objetivo
 
-CavaPlus ya tiene un pipeline de visualización de audio funcionando de punta a punta (WASAPI loopback → FFT → barras → render en terminal), implementado en la rama `feature/cavaplus-mvp` (aún no mergeada a `master`). Esta feature agrega un overlay de texto en la fila superior de la pantalla mostrando "Título — Artista" de lo que sea que Windows esté reproduciendo actualmente (Spotify, un video en el navegador, un reproductor nativo, etc.), superpuesto sobre el grid de barras existente.
+Pulsewave ya tiene un pipeline de visualización de audio funcionando de punta a punta (WASAPI loopback → FFT → barras → render en terminal), implementado en la rama `feature/cavaplus-mvp` (aún no mergeada a `master`). Esta feature agrega un overlay de texto en la fila superior de la pantalla mostrando "Título — Artista" de lo que sea que Windows esté reproduciendo actualmente (Spotify, un video en el navegador, un reproductor nativo, etc.), superpuesto sobre el grid de barras existente.
 
 ## Cambio de plataforma requerido
 
 Para leer la metadata de "now playing" del sistema se usa `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager` (la misma fuente de datos que usa el overlay multimedia nativo de Windows al presionar las teclas de volumen). Esta API requiere que el proyecto apunte a un TDF de Windows concreto:
 
-`src/CavaPlus/CavaPlus.csproj`: `TargetFramework` cambia de `net8.0` a `net8.0-windows10.0.19041.0`.
+`src/Pulsewave/Pulsewave.csproj`: `TargetFramework` cambia de `net8.0` a `net8.0-windows10.0.19041.0`.
 
-CavaPlus ya es una app exclusiva de Windows (usa WASAPI y la consola de Windows Terminal), así que este cambio no reduce compatibilidad real.
+Pulsewave ya es una app exclusiva de Windows (usa WASAPI y la consola de Windows Terminal), así que este cambio no reduce compatibilidad real.
 
 ## Arquitectura
 
 ### Componentes nuevos
 
-- **`NowPlayingInfo`** (`src/CavaPlus/Media/NowPlayingInfo.cs`) — record inmutable `(string Title, string Artist)`.
-- **`NowPlayingWatcher`** (`src/CavaPlus/Media/NowPlayingWatcher.cs`) — envuelve `GlobalSystemMediaTransportControlsSessionManager`:
+- **`NowPlayingInfo`** (`src/Pulsewave/Media/NowPlayingInfo.cs`) — record inmutable `(string Title, string Artist)`.
+- **`NowPlayingWatcher`** (`src/Pulsewave/Media/NowPlayingWatcher.cs`) — envuelve `GlobalSystemMediaTransportControlsSessionManager`:
   - `StartAsync()`: obtiene el manager una sola vez (`RequestAsync()`), se suscribe a su evento `CurrentSessionChanged`, y se suscribe al `MediaPropertiesChanged` de la sesión actualmente activa (si hay una). Cuando `CurrentSessionChanged` dispara, se desuscribe de la sesión anterior y se suscribe a la nueva.
   - Cada vez que `MediaPropertiesChanged` dispara (o al suscribirse a una sesión nueva), llama a `TryGetMediaPropertiesAsync()` de esa sesión y actualiza una propiedad thread-safe `Current` con un nuevo `NowPlayingInfo` (o `null` si la sesión no tiene título).
   - Si `RequestAsync()` u otra parte de la inicialización lanza una excepción (API no soportada en este Windows, activación WinRT falla, etc.), la excepción se captura dentro de `StartAsync()`, se ignora, y `Current` queda en `null` permanentemente — el resto de la app sigue funcionando sin overlay.
   - Patrón de concurrencia: igual que `SampleRingBuffer`/`AudioCapture` — un lado (los eventos de WinRT, en su propio hilo) escribe `Current` bajo un lock simple; el render loop lee `Current` cada frame sin bloquear.
-- **`OverlayText`** (`src/CavaPlus/Rendering/OverlayText.cs`) — función estática pura: `Apply(BarCell[,] frame, string text, int row, Color color)`. Centra `text` horizontalmente respecto al número de columnas del frame, trunca con `…` al final si no cabe, y sobreescribe la fila `row` completa del grid (las columnas fuera del texto centrado quedan en blanco/espacio con el mismo color). Si `row` está fuera de rango del frame, no hace nada (no lanza excepción). No depende de Windows ni de audio — 100% unit-testeable con datos sintéticos.
+- **`OverlayText`** (`src/Pulsewave/Rendering/OverlayText.cs`) — función estática pura: `Apply(BarCell[,] frame, string text, int row, Color color)`. Centra `text` horizontalmente respecto al número de columnas del frame, trunca con `…` al final si no cabe, y sobreescribe la fila `row` completa del grid (las columnas fuera del texto centrado quedan en blanco/espacio con el mismo color). Si `row` está fuera de rango del frame, no hace nada (no lanza excepción). No depende de Windows ni de audio — 100% unit-testeable con datos sintéticos.
 
 ### Wiring en `Program.cs`
 
