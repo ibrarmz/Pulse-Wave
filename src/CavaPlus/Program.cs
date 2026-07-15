@@ -1,6 +1,7 @@
 using CavaPlus.Audio;
 using CavaPlus.Bars;
 using CavaPlus.Config;
+using CavaPlus.Media;
 using CavaPlus.Rendering;
 using CavaPlus.Spectrum;
 using Spectre.Console;
@@ -80,6 +81,20 @@ catch (Exception ex) when (ex is FormatException or ArgumentOutOfRangeException 
 var frameBuilder = new BarFrameBuilder(barStyle, config.Bars.Width, config.Bars.Gap, colorStops, config.Color.Mode == "solid");
 var renderer = new ConsoleRenderer();
 
+var nowPlayingWatcher = new NowPlayingWatcher();
+if (config.NowPlaying.Enabled)
+{
+    try
+    {
+        await nowPlayingWatcher.StartAsync();
+    }
+    catch
+    {
+        // Non-fatal: if this throws unexpectedly, the overlay just keeps showing the
+        // configured placeholder instead of real metadata - the rest of the app is unaffected.
+    }
+}
+
 bool running = true;
 Console.CancelKeyPress += (_, e) =>
 {
@@ -134,6 +149,16 @@ try
         }
 
         var frame = frameBuilder.BuildFrame(heights, rows);
+
+        if (config.NowPlaying.Enabled)
+        {
+            var current = nowPlayingWatcher.Current;
+            string nowPlayingText = current is not null
+                ? $"{current.Title} — {current.Artist}"
+                : config.NowPlaying.Placeholder;
+            OverlayText.Apply(frame, nowPlayingText, row: 0, color: Color.White);
+        }
+
         renderer.Render(frame);
 
         var elapsed = DateTime.UtcNow - frameStart;
