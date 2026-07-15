@@ -63,4 +63,16 @@ public class ColorPalettesTests
 
         Assert.Equal(new Color(0x00, 0xFF, 0x7F), color);
     }
+
+    [Fact]
+    public void ParseHexColor_WithTooShortHex_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ColorPalettes.ParseHexColor("#FF"));
+    }
+
+    [Fact]
+    public void ParseHexColor_WithNonHexCharacters_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => ColorPalettes.ParseHexColor("#GGGGGG"));
+    }
 }
