@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CavaPlus.Rendering;
 using Tomlyn;
 
 namespace CavaPlus.Config;
@@ -14,7 +15,7 @@ public static class ConfigLoader
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private static readonly string[] ValidPalettes = { "rainbow", "neon", "fire", "ice", "mono", "custom" };
+    private static readonly string[] ValidPalettes = ColorPalettes.PresetNames.Append("custom").ToArray();
 
     public static CavaConfig LoadOrCreateDefault(string path)
     {

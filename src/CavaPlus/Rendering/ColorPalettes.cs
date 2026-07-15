@@ -13,6 +13,8 @@ public static class ColorPalettes
         ["mono"] = new[] { "#003300", "#00AA00", "#00FF00", "#CCFFCC" },
     };
 
+    public static IReadOnlyCollection<string> PresetNames => Presets.Keys;
+
     public static List<Color> Resolve(string paletteName, List<string> customGradientHex)
     {
         IEnumerable<string> hexColors = Presets.TryGetValue(paletteName, out var preset)
